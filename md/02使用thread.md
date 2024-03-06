@@ -107,3 +107,31 @@ std::thread t( Task (*p)() ){ return {}; }  // #2 函数定义
 `#2`我们写出了函数形参名称 `p`，再将函数类型写成函数指针类型，事实上**完全等价**。我相信，这样，也就足够了。
 
 所以总而言之，建议使用 `{}` 进行初始化，这是好习惯，大多数时候它是合适的。
+
+C++11 引入的 Lambda 表达式，同样可以作为构造 `std::thread` 的参数，因为 Lambda 本身就是[生成](https://cppinsights.io/s/c448ad3d)了一个函数对象。
+
+```cpp
+#include <iostream>
+#include <thread>
+
+int main(){
+    std::thread thread{ [] {std::cout << "Hello Word!\n"; } };
+    thread.join();
+}
+```
+
+---
+
+启动线程后（也就是构造 `std::thread` 对象）我们必须在线程对象的生存期结束之前，即 [`std::thread::~thread`](https://zh.cppreference.com/w/cpp/thread/thread/%7Ethread) 调用之前，决定它的执行策略，是 [`join()`](https://zh.cppreference.com/w/cpp/thread/thread/join)（合并）还是 [`detach()`](https://zh.cppreference.com/w/cpp/thread/thread/detach)（分离）。
+
+我们先前使用的就是 join()，我们聊一下 **detach()**，当 `std::thread` 线程对象调用了 detach()，那么就是线程对象放弃了对线程资源的所有权，不再管理此线程，允许此线程独立的运行，在线程退出时释放所有分配的资源。
+
+放弃了对线程资源的所有权，也就是线程对象没有关联活跃线程了，此时 joinable 为 **`false`**。
+
+在单线程的代码中，对象销毁之后再去访问，会产生[未定义行为](https://zh.cppreference.com/w/cpp/language/ub)，线程的生存期增加了这个问题发生的几率。
+
+比如函数结束，那么函数局部对象的生存期都已经结束了，都被销毁了，此时线程函数还持有函数局部对象的指针或引用。
+
+```cpp
+
+```
