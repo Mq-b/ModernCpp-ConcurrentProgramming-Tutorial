@@ -128,10 +128,52 @@ int main(){
 
 放弃了对线程资源的所有权，也就是线程对象没有关联活跃线程了，此时 joinable 为 **`false`**。
 
-在单线程的代码中，对象销毁之后再去访问，会产生[未定义行为](https://zh.cppreference.com/w/cpp/language/ub)，线程的生存期增加了这个问题发生的几率。
+在单线程的代码中，对象销毁之后再去访问，会产生[未定义行为](https://zh.cppreference.com/w/cpp/language/ub)，多线程增加了这个问题发生的几率。
 
 比如函数结束，那么函数局部对象的生存期都已经结束了，都被销毁了，此时线程函数还持有函数局部对象的指针或引用。
 
 ```cpp
+#include <iostream>
+#include <thread>
 
+struct func{
+    int& m_i;
+    func(int& i) :m_i{ i } {}
+    void operator()(int n){
+        for(int i=0;i<=n;++i){
+            m_i += i;           // 可能悬空引用
+        }
+    }
+};
+
+int main(){
+    int n = 0;
+    std::thread my_thread{ func{n},100 };
+    my_thread.detach();        // 分离，不等待线程结束
+}                              // 分离的线程可能还在运行
 ```
+
+1. 主线程（main）创建局部对象 n、创建线程对象 my_thread 启动线程，执行任务 **`func{n}`**，局部对象 n 的引用被子线程持有。传入 100 用于调用 func 的 operator(int)。
+
+2. `my_thread.detach();`，joinable() 为 `false`。线程分离，线程对象不再持有线程资源，线程独立的运行。
+
+3. 主线程不等待，此时分离的子线程可能没有执行完毕，但是主线程（main）已经结束，局部对象 `n` 生存期结束，被销毁，而此时子线程还持有它的引用，访问悬空引用，造成未定义行为。`my_thread` 已经没有关联线程资源，正常析构，没有问题。
+
+解决方法很简单，将 detach() 替换为 join()。
+
+>**通常非常不推荐使用 detach()，因为程序员必须确保所有创建的线程正常退出，释放所有获取的资源并执行其他必要的清理操作。这意味着通过调用 detach() 放弃线程的所有权不是一种选择，因此 join 应该在所有场景中使用。** 一些老式特殊情况不聊。
+
+另外提示一下，也**不要想着** detach() 之后，再次调用 join()
+
+```cpp
+my_thread.detach();
+// todo..
+my_thread.join();
+// 函数结束
+```
+
+认为这样可以确保被分离的线程在这里阻塞执行完？
+
+我们前面聊的很清楚了，detach() 是线程分离，**线程对象放弃了线程资源的所有权**，此时我们的 my_thread 它现在根本没有关联任何线程。调用 join() 是：“阻塞当前线程直至 *this 所标识的线程结束其执行”，我们的线程对象都没有线程，堵塞什么？执行什么呢？
+
+简单点说，必须是 std::thread 的 joinable() 为 true 即线程对象有活跃线程，才能调用 join() 和 detach()。
