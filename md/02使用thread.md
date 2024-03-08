@@ -51,7 +51,7 @@ int main(){
 > 当然了，如果是**默认构造**，那么 `std::thread` 线程对象没有关联线程的，自然也不会启动线程执行任务。
 >
 > ```cpp
-> std::thread t; //  构造不表示线程的新 std::thread 对象-
+> std::thread t; //  构造不表示线程的新 std::thread 对象
 > ```
 
 我们上一节的示例是传递了一个函数给 `std::thread` 对象，函数会在新线程中执行。`std::thread` 支持的形式还有很多，只要是[可调用(Callable)](https://zh.cppreference.com/w/cpp/named_req/Callable)对象即可，比如重载了 `operator()` 的类对象（也可以直接叫函数对象）。
@@ -136,11 +136,11 @@ int main(){
 #include <iostream>
 #include <thread>
 
-struct func{
+struct func {
     int& m_i;
     func(int& i) :m_i{ i } {}
-    void operator()(int n){
-        for(int i=0;i<=n;++i){
+    void operator()(int n)const {
+        for (int i = 0; i <= n; ++i) {
             m_i += i;           // 可能悬空引用
         }
     }
@@ -161,7 +161,7 @@ int main(){
 
 解决方法很简单，将 detach() 替换为 join()。
 
->**通常非常不推荐使用 detach()，因为程序员必须确保所有创建的线程正常退出，释放所有获取的资源并执行其他必要的清理操作。这意味着通过调用 detach() 放弃线程的所有权不是一种选择，因此 join 应该在所有场景中使用。** 一些老式特殊情况不聊。
+>**通常非常不推荐使用 detach()，因为程序员必须确保所有创建的线程正常退出，释放所有获取的资源并执行其它必要的清理操作。这意味着通过调用 detach() 放弃线程的所有权不是一种选择，因此 join 应该在所有场景中使用。** 一些老式特殊情况不聊。
 
 另外提示一下，也**不要想着** detach() 之后，再次调用 join()
 
@@ -207,7 +207,7 @@ void f(){
 
 我知道你可能有很多疑问，我们既然 catch 接住了异常，为什么还要 throw？以及为什么我们要两个 join()？
 
-这两个问题其实也算一个问题，如果代码里抛出了异常，就会跳转到 catch 的代码中，执行 join() 确保线程正常执行完成，线程对象可以正常析构。然而此时我们必须再次 throw 抛出异常，因为你要是不抛出，那么你不是还得执行一个 `t.join()`？显然逻辑不对，自然抛出。至于这个**函数产生的异常，由调用方进行处理**，我们只是确保函数 f 中创建的线程正常执行完成，其局部对象正常析构释放。[测试代码](https://godbolt.org/z/33ajh893P)。
+这两个问题其实也算一个问题，如果代码里抛出了异常，就会跳转到 catch 的代码中，执行 join() 确保线程正常执行完成，线程对象可以正常析构。然而此时我们必须再次 throw 抛出异常，因为你要是不抛出，那么你不是还得执行一个 `t.join()`？显然逻辑不对，自然抛出。至于这个**函数产生的异常，由调用方进行处理**，我们只是确保函数 f 中创建的线程正常执行完成，其局部对象正常析构释放。[测试代码](https://godbolt.org/z/jo5sPvPGE)。
 
 ### RAII
 
@@ -218,5 +218,35 @@ void f(){
 我们可以提供一个类，在析构函数中使用 join() 确保线程执行完成，线程对象正常析构。
 
 ```cpp
-
+class thread_guard{
+    std::thread& m_t;
+public:
+    explicit thread_guard(std::thread& t) :m_t{ t } {}
+    ~thread_guard(){
+        std::puts("析构");     // 打印 不用在乎
+        if (m_t.joinable()) { // 没有关联活跃线程
+            m_t.join();
+        }
+    }
+    thread_guard(const thread_guard&) = delete;
+    thread_guard& operator=(const thread_guard&) = delete;
+};
+void f(){
+    int n = 0;
+    std::thread t{ func{n},10 };
+    thread_guard g(t);
+    f2(); // 可能抛出异常
+}
 ```
+
+函数 f 执行完毕，局部对象就要逆序销毁了。因此，thread_guard 对象 g 是第一个被销毁的，调用析构函数。**即使函数 f2() 抛出了一个异常，这个销毁依然会发生（前提是你处理了这个异常）**。这确保了线程对象 t 所关联的线程正常的执行完毕以及线程对象的正常析构。[测试代码](https://godbolt.org/z/MaWjW73P4)。
+
+在 thread_guard 的析构函数中，我们要判断 `std::thread` 线程对象现在是否有关联的活跃线程，如果有，我们才会执行 **`join()`**，阻塞当前线程直到线程对象关联的线程执行完毕。如果不想等待线程结束可以使用 `detach()` ，但是这让 `std::thread` 对象失去了线程资源的所有权，难以掌控，具体如何，看情况分析。
+
+拷贝赋值和拷贝构造设置为 `=delete` 首先是防止编译器隐式生成，并且也能抑制编译器生成移动构造和移动赋值。这样的话，对 thread_guard 对象进行拷贝或赋值等操作会引发一个编译错误。
+
+不允许这些操作主要在于：这是个管理类，而且顾名思义，它就应该只是单纯的管理线程对象仅此而已，只保有一个引用，单纯的做好 RAII 的事情就行，允许其他操作没有价值。
+
+> 其实这里倒也不算非常符合 RAII，因为 thread_guard 的构造函数其实并没有申请资源只是保有了线程对象的引用，在析构的时候进行了 join() 。
+
+### 传递参数
