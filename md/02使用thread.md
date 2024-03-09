@@ -273,3 +273,66 @@ void f(){
 > 其实这里倒也不算非常符合 RAII，因为 thread_guard 的构造函数其实并没有申请资源只是保有了线程对象的引用，在析构的时候进行了 join() 。
 
 ### 传递参数
+
+向可调用对象或函数传递参数很简单，我们前面也都写了，只需要将这些参数作为 `std::thread` 的构造参数即可。需要注意的是，这些参数会拷贝到新线程的内存空间中，即使函数中的参数是引用，依然**实际是拷贝**。
+
+```cpp
+void f(int, const int& a);
+
+int n = 1;
+std::thread t(f, 3, n);
+```
+
+线程对象 t 的构造没有问题，可以通过编译，但是这个 n 实际上并没有按引用传递，而是拷贝了，我们可以打印地址来验证我们的猜想。
+
+```cpp
+void f(int, const int& a) { // a 并非引用了局部对象 n
+    std::cout << &a << '\n'; 
+}
+
+int main() {
+    int n = 1;
+    std::cout << &n << '\n';
+    std::thread t(f, 3, n);
+    t.join();
+}
+```
+
+[运行代码](https://godbolt.org/z/TzWeW5rxh)，打印的地址截然不同。
+
+可以通过编译，是一些设计问题，但通常这不符合我们的需求，因为我们的函数中的参数是引用，我们自然希望能引用调用方传递的参数，而不是拷贝。如果我们的 f 的形参类型不是 **const 的引用**，则会产生一个[编译错误](https://godbolt.org/z/3nMb4asnG)。
+
+想要解决这个问题很简单，我们可以使用标准库的设施 [`std::ref`](https://zh.cppreference.com/w/cpp/utility/functional/ref) 、 `std::cref` 函数模板。
+
+```cpp
+void f(int, int& a) {
+    std::cout << &a << '\n'; 
+}
+
+int main() {
+    int n = 1;
+    std::cout << &n << '\n';
+    std::thread t(f, 3, std::ref(n));
+    t.join();
+}
+```
+
+[运行代码](https://godbolt.org/z/hTP3ex4W7)，打印地址完全相同。
+
+我们来解释一下，“**ref**” 其实就是 “**reference**” （引用）的缩写，意思也很简单，返回“引用”，当然了，不是真的返回引用，它们返回一个包装类 [`std::reference_wrapper`](https://zh.cppreference.com/w/cpp/utility/functional/reference_wrapper)，顾名思义，这个类就是来包装引用对象的类模板，可以隐式转换为包装对象的引用。
+
+“**cref**”呢？，这个“c”就是“**const**”，就是返回了 `std::reference_wrapper<const T>`。我们不详细介绍他们的实现，你简单认为`reference_wrapper`可以隐式转换为被包装的引用即可，
+
+```cpp
+int n = 0;
+std::reference_wrapper<int> r = std::ref(n);
+int& p = r; // r 隐式转换为 n 的引用 此时 p 引用的就是 n
+```
+
+```cpp
+int n = 0;
+std::reference_wrapper<const int> r = std::cref(n);
+const int& p = r; // r 隐式转换为 n 的 const 的引用 此时 p 引用的就是 n
+```
+
+> 如果对他们的实现感兴趣，可以观看[视频](https://www.bilibili.com/video/BV1np4y1j78L)。
