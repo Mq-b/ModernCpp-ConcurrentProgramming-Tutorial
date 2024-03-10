@@ -341,7 +341,7 @@ const int& p = r; // r 隐式转换为 n 的 const 的引用 此时 p 引用的�
 
 ---
 
-[**成员函数指针**](https://zh.cppreference.com/w/cpp/language/pointer#.E6.88.90.E5.91.98.E5.87.BD.E6.95.B0.E6.8C.87.E9.92.88)也是*[可调用](https://zh.cppreference.com/w/cpp/named_req/Callable)* *(Callable)*的 ，可以传递给 `std::thread` 作为构造参数，让其关联的线程执行成员函数。
+[**成员函数指针**](https://zh.cppreference.com/w/cpp/language/pointer#.E6.88.90.E5.91.98.E5.87.BD.E6.95.B0.E6.8C.87.E9.92.88)也是[*可调用*](https://zh.cppreference.com/w/cpp/named_req/Callable)(*Callable*)的 ，可以传递给 `std::thread` 作为构造参数，让其关联的线程执行成员函数。
 
 ```cpp
 struct X{
