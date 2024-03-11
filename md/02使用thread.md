@@ -236,7 +236,7 @@ void f(){
 
 “[资源获取即初始化](https://zh.cppreference.com/w/cpp/language/raii)”(RAII，Resource Acquisition Is Initialization)。
 
-简单的理解是：构造函数申请资源，析构函数释放资源，让对象的生命周期和资源绑定。
+简单的理解是：***构造函数申请资源，析构函数释放资源，让对象的生命周期和资源绑定***。
 
 我们可以提供一个类，在析构函数中使用 join() 确保线程执行完成，线程对象正常析构。
 
@@ -270,7 +270,7 @@ void f(){
 
 不允许这些操作主要在于：这是个管理类，而且顾名思义，它就应该只是单纯的管理线程对象仅此而已，只保有一个引用，单纯的做好 RAII 的事情就行，允许其他操作没有价值。
 
-> 其实这里倒也不算非常符合 RAII，因为 thread_guard 的构造函数其实并没有申请资源，只是保有了线程对象的引用，在析构的时候进行了 join() 。
+> 严格来说其实这里倒也不算 RAII，因为 thread_guard 的构造函数其实并没有申请资源，只是保有了线程对象的引用，在析构的时候进行了 join() 。
 
 ### 传递参数
 
@@ -317,13 +317,13 @@ int main() {
 }
 ```
 
-> 这里如果不使用 `std::ref` 并不会和前面一样只是多了拷贝，而是会产生[**编译错误**](https://godbolt.org/z/xhrhs6Ke5)，这是因为 `std::thread` 内部代码会将拷贝的参数以右值的方式进行传递，这是为了那些只支持移动的类型。
+> 这里如果不使用 `std::ref` 并不会和前面一样只是多了拷贝，而是会产生[**编译错误**](https://godbolt.org/z/xhrhs6Ke5)，这是因为 `std::thread` 内部代码会将拷贝的参数以右值的方式进行传递，这是为了那些只支持移动的类型，左值引用没办法引用右值表达式，所以产生编译错误。
 
 [运行代码](https://godbolt.org/z/hTP3ex4W7)，打印地址完全相同。
 
 我们来解释一下，“**ref**” 其实就是 “**reference**” （引用）的缩写，意思也很简单，返回“引用”，当然了，不是真的返回引用，它们返回一个包装类 [`std::reference_wrapper`](https://zh.cppreference.com/w/cpp/utility/functional/reference_wrapper)，顾名思义，这个类就是来包装引用对象的类模板，可以隐式转换为包装对象的引用。
 
-“**cref**”呢？，这个“c”就是“**const**”，就是返回了 `std::reference_wrapper<const T>`。我们不详细介绍他们的实现，你简单认为`reference_wrapper`可以隐式转换为被包装的引用即可，
+“**cref**”呢？，这个“c”就是“**const**”，就是返回了 `std::reference_wrapper<const T>`。我们不详细介绍他们的实现，你简单认为`reference_wrapper`可以隐式转换为被包装对象的引用即可，
 
 ```cpp
 int n = 0;
@@ -366,7 +366,7 @@ struct X{
 std::thread t{ std::bind(&X::task_run, &x ,n) };
 ```
 
-不过需要注意，`std::bind` 也是默认[拷贝](https://godbolt.org/z/c5bh8Easd)的，即使我们的成员函数形参类型为引用：
+不过需要注意，`std::bind` 也是默认[**拷贝**](https://godbolt.org/z/c5bh8Easd)的，即使我们的成员函数形参类型为引用：
 
 ```cpp
 struct X {
@@ -409,7 +409,7 @@ void test(){
 }
 ```
 
-以上代码可能导致一些问题，buffer 是一个数组对象，不过数组不能拷贝，作为 `std::thread` 构造参数的时候，**隐式转换为了指向这个数组的指针**。
+以上代码可能导致一些问题，buffer 是一个数组对象，作为 `std::thread` 构造参数的传递的时候会[*`decay-copy`*](https://zh.cppreference.com/w/cpp/standard_library/decay-copy) （确保实参在按值传递时会退化） **隐式转换为了指向这个数组的指针**。
 
 我们要特别强调，`std::thread` 构造是代表“启动线程”，而不是调用我们传递的可调用对象。
 
