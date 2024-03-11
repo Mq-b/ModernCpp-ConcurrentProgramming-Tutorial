@@ -8,14 +8,14 @@
 
 - **了解一个庞大的类，最简单的方式就是先看它的数据成员有什么**。
 
-`std::thread` 只保有一个私有数据成员：
+`std::thread` 只保有一个私有数据成员 [`_Thr`](https://github.com/microsoft/STL/blob/main/stl/inc/thread#L163)：
 
 ```cpp
 private:
     _Thrd_t _Thr;
 ```
 
-`_Thrd_t` 是一个结构体，它保有两个数据成员：
+[`_Thrd_t`](https://github.com/microsoft/STL/blob/main/stl/inc/xthreads.h#L22-L26) 是一个结构体，它保有两个数据成员：
 
 ```cpp
 using _Thrd_id_t = unsigned int;
