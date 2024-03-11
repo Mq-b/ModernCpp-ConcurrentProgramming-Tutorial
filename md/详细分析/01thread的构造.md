@@ -55,7 +55,7 @@ struct _Thrd_t { // thread identifier for Win32
    thread(const thread&) = delete;
    ```
 
-4.  构造新的 `std::thread` 对象并将它与执行线程关联。**表示新的执行线程开始执行**。
+4. 构造新的 `std::thread` 对象并将它与执行线程关联。**表示新的执行线程开始执行**。
 
    ```cpp
    template <class _Fn, class... _Args, enable_if_t<!is_same_v<_Remove_cvref_t<_Fn>, thread>, int> = 0>
