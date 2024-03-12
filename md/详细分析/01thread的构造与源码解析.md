@@ -150,7 +150,7 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
 10. `_Throw_Cpp_error(_RESOURCE_UNAVAILABLE_TRY_AGAIN);`
 
-- 抛出一个 C++ 错误，表示资源不可用，请再次尝试。
+    - 抛出一个 C++ 错误，表示资源不可用，请再次尝试。
 
 ## 总结
 
