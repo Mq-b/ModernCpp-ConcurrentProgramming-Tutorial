@@ -438,3 +438,91 @@ void test(){
        t.detach();
    }
    ```
+
+### `std::this_thread`
+
+这个命名空间包含了管理当前线程的函数。
+
+1. [`yield`](https://zh.cppreference.com/w/cpp/thread/yield) 建议实现重新调度各执行线程。
+2. [`get_id`](https://zh.cppreference.com/w/cpp/thread/get_id) 返回当前线程 id。
+3. [`sleep_for`](https://zh.cppreference.com/w/cpp/thread/sleep_for) 使当前线程停止执行指定时间。
+4. [`sleep_until`](https://zh.cppreference.com/w/cpp/thread/sleep_until) 使当前线程执行**停止到**指定的时间点。
+
+它们之中最常用的是 `get_id`，其次是 `sleep_for`，再然后 `yield`，`sleep_until` 较少。
+
+- 使用 `get_jd` [打印](https://godbolt.org/z/fPcaj7xTv)主线程和子线程的 ID。
+
+  ```cpp
+  int main() {
+      std::cout << std::this_thread::get_id() << '\n';
+  
+      std::thread t{ [] {
+          std::cout << std::this_thread::get_id() << '\n';
+      } };
+      t.join();
+  }
+  ```
+
+- 使用 `slee_for` 延时。当 `Sleep` 之类的就行，但是它需要接受的参数不同，是 `std::chrono` 命名空间中的时间对象。
+
+  ```cpp
+  int main() {
+      std::this_thread::sleep_for(std::chrono::seconds(3));
+  }
+  ```
+
+  主线程延时 3 秒，这个传入了一个临时对象 `seconds` ，它是模板 [`std::chrono::duration`](https://zh.cppreference.com/w/cpp/chrono/duration) 的别名，以及还有很多其他的时间类型，都基于这个类。说实话挺麻烦的，如果您支持 C++14，建议使用[时间字面量](https://zh.cppreference.com/w/cpp/symbol_index/chrono_literals)，在 [`std::chrono_literals`](https://github.com/microsoft/STL/blob/main/stl/inc/__msvc_chrono.hpp#L742-L804) 命名空间中。我们可以改成下面这样：
+
+  ```cpp
+  using namespace std::chrono_literals;
+  
+  int main() {
+      std::this_thread::sleep_for(3s);
+  }
+  ```
+
+  简单直观。
+
+- `yield` 减少 CPU 的占用。
+
+  ```cpp
+  while (!isDone()){
+      std::this_thread::yield();
+  }
+  ```
+
+  线程需要等待某个操作完成，如果你直接用一个循环不断判断这个操作是否完成就会使得这个线程占满 CPU 时间，这会造成资源浪费。此时可以判断操作是否完成，如果还没完成就调用 yield 交出 CPU 时间片让其他线程执行，过一会儿再来判断是否完成，这样这个线程占用 CPU 时间会大大减少。
+
+- 使用 `sleep_until` 让当前线程延迟到具体的时间。我们延时 5 秒就是。
+
+  ```cpp
+  int main() {
+      // 获取当前时间点
+      auto now = std::chrono::system_clock::now();
+  
+      // 设置要等待的时间点为当前时间点之后的5秒
+      auto wakeup_time = now + 5s;
+  
+      // 输出当前时间
+      auto now_time = std::chrono::system_clock::to_time_t(now);
+      std::cout << "Current time:\t\t" << std::put_time(std::localtime(&now_time), "%H:%M:%S") << std::endl;
+  
+      // 输出等待的时间点
+      auto wakeup_time_time = std::chrono::system_clock::to_time_t(wakeup_time);
+      std::cout << "Waiting until:\t\t" << std::put_time(std::localtime(&wakeup_time_time), "%H:%M:%S") << std::endl;
+  
+      // 等待到指定的时间点
+      std::this_thread::sleep_until(wakeup_time);
+  
+      // 输出等待结束后的时间
+      now = std::chrono::system_clock::now();
+      now_time = std::chrono::system_clock::to_time_t(now);
+      std::cout << "Time after waiting:\t" << std::put_time(std::localtime(&now_time), "%H:%M:%S") << std::endl;
+  }
+  ```
+
+  `sleep_until` 本身设置很简单，是打印时间格式之类的，设置时区麻烦。[运行结果](https://godbolt.org/z/4qYGbcvYW)。
+
+介绍了一下 `std::this_thread` 命名空间中的四个成员函数的基本用法，我们后续会经常看到这些函数的使用，不用着急。
+
+### `std::thread` 转移所有权

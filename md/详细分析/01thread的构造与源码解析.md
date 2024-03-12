@@ -97,7 +97,7 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
 3. `auto _Decay_copied = _STD make_unique<_Tuple>(_STD forward<_Fn>(_Fx), _STD forward<_Args>(_Ax)...)`
 
-   - 使用 [`make_unique`](https://zh.cppreference.com/w/cpp/memory/unique_ptr/make_unique) 创建了一个独占指针，指向的是 `_Tuple` 类型的对象，存储了传入的函数对象和参数的副本。
+   - 使用 [`make_unique`](https://zh.cppreference.com/w/cpp/memory/unique_ptr/make_unique) 创建了一个独占指针，指向的是 `_Tuple` 类型的对象，**存储了传入的函数对象和参数的副本**。
 
 4. `constexpr auto _Invoker_proc = _Get_invoke<_Tuple>(make_index_sequence<1 + sizeof...(_Args)>{})`
 
