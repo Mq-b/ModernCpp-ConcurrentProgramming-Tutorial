@@ -124,7 +124,7 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
    > 它的形参类型我们不再过多介绍，你只需要知道 [`index_sequence`](https://en.cppreference.com/w/cpp/utility/integer_sequence)  这个东西可以用来接收一个由 `make_index_sequence` 创建的索引形参包，帮助我们进行遍历即可。
 
-   **_Invoke 是重中之重，它是线程实际执行的函数**，如你所见它的形参类型是 `void*` ，这是必须的，要符合 `_beginthreadex` 执行函数的类型要求。虽然是 `void*`，但是我可以将它转换为 `_Tuple*` 类型，构造一个独占智能指针，然后用 get 成员函数获取底层指针，解引用，获取引用，`_Tup` 接取。
+   **_Invoke 是重中之重，它是线程实际执行的函数**，如你所见它的形参类型是 `void*` ，这是必须的，要符合 `_beginthreadex` 执行函数的类型要求。虽然是 `void*`，但是我可以将它转换为 `_Tuple*` 类型，构造一个独占智能指针，然后调用 get() 成员函数获取底层指针，解引用指针，得到元组的引用初始化`_Tup` 。
 
    此时，我们就可以进行调用了，使用 [`std::invoke`](https://zh.cppreference.com/w/cpp/utility/functional/invoke) + `std::move`（默认移动） ，这里有一个形参包展开，`_STD get<_Indices>(_Tup))...`，_Tup 就是 std::tuple 的引用，我们使用 `std::get<>` 获取元组存储的数据，需要传入一个索引，这里就用到了 `_Indices`。展开之后，就等于 invoke 就接受了我们构造 std::thread 传入的可调用对象，调用可调用对象的参数，invoke 就可以执行了。
 
