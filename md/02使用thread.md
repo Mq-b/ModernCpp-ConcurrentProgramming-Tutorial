@@ -1,6 +1,6 @@
 # 使用 `std::thread`
 
-## Hello Word
+## Hello World
 
 在我们初学 C++ 的时候应该都写过这样一段代码：
 
@@ -8,11 +8,11 @@
 #include <iostream>
 
 int main(){
-    std::cout << "Hello Word!" << std::endl;
+    std::cout << "Hello World!" << std::endl;
 }
 ```
 
-这段代码将"Hello Word!"写入到标准输出流，换行并[刷新](https://zh.cppreference.com/w/cpp/io/manip/endl)。
+这段代码将"Hello World!"写入到标准输出流，换行并[刷新](https://zh.cppreference.com/w/cpp/io/manip/endl)。
 
 我们启动一个线程来做这件事情：
 
@@ -21,7 +21,7 @@ int main(){
 #include <thread>  // 引入线程支持头文件
 
 void hello(){     // 定义一个函数用作打印任务
-    std::cout << "Hello Word" << std::endl;
+    std::cout << "Hello World" << std::endl;
 }
 
 int main(){
@@ -115,7 +115,7 @@ C++11 引入的 Lambda 表达式，同样可以作为构造 `std::thread` 的参
 #include <thread>
 
 int main(){
-    std::thread thread{ [] {std::cout << "Hello Word!\n"; } };
+    std::thread thread{ [] {std::cout << "Hello World!\n"; } };
     thread.join();
 }
 ```
@@ -521,8 +521,50 @@ void test(){
   }
   ```
 
-  `sleep_until` 本身设置很简单，是打印时间格式之类的，设置时区麻烦。[运行结果](https://godbolt.org/z/4qYGbcvYW)。
+  `sleep_until` 本身设置使用很简单，是打印时间格式之类的、设置时区麻烦。[运行结果](https://godbolt.org/z/4qYGbcvYW)。
 
 介绍了一下 `std::this_thread` 命名空间中的四个成员函数的基本用法，我们后续会经常看到这些函数的使用，不用着急。
 
 ### `std::thread` 转移所有权
+
+传入可调用对象以及参数，构造 `std::thread` 对象，线程启动，而线程对象拥有了线程资源的所有权。
+
+`std::thread` 不可复制，只能移动，移动就是转移它的线程资源的所有权给别的 `std::thread` 对象。
+
+```cpp
+int main() {
+    std::thread t{ [] {
+        std::cout << std::this_thread::get_id() << '\n';
+    } };
+    std::cout << t.joinable() << '\n'; // 线程对象 t 当前关联了活跃线程 打印 1
+    std::thread t2{ std::move(t) };    // 将 t 的线程资源的所有权移交给 t2
+    std::cout << t.joinable() << '\n'; // 线程对象 t 当前没有关联活跃线程 打印 0
+    //t.join(); // Error! t 没有线程资源
+    t2.join();  // t2 当前持有线程资源
+}
+```
+
+这段代码通过**移动构造**转移了线程对象 `t` 的线程资源所有权到 `t2`，这里虽然有两个 `std::thread` 对象，但是从始至终只有一个线程资源，让持有线程资源的 `t2` 对象最后调用 `join()` 堵塞让其线程执行完毕。`t` 与 `t2` 都能正常析构。
+
+我们还可以使用移动赋值来转移线程资源的所有权：
+
+```cpp
+int main() {
+    std::thread t;      // 默认构造，没有关联活跃线程
+    std::cout << t.joinable() << '\n'; // 0
+    std::thread t2{ [] {} };
+    t = std::move(t2); // 转移线程资源的所有权到 t
+    std::cout << t.joinable() << '\n'; // 1
+    t.join();
+    
+    t2 = std::thread([] {});
+    t2.join();
+}
+```
+
+我们只需要介绍 `t2 = std::thread([] {})` ，临时对象是右值表达式，不用调用 `std::move`，这里相当于是将临时的 `std::thread` 对象所持有的线程资源转移给 `t2`，`t2` 再调用 `join()` 正常析构。
+
+函数返回 `std::thread` 对象：
+
+```cpp
+```
