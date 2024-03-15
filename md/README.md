@@ -1,14 +1,12 @@
 <div align="center">
 
-<a herf="https://zh.cppreference.com/w/cpp/thread">
-<img src="image/现代C++并发编程教程.png" width=512px alt="cpp"/>
 </a>
 
 # 现代C++并发编程教程
 
-本仓库用来存放 B 站课程[《现代 C++ 并发编程教程》]()的教案、代码。
+本书即可认为是 B 站课程[《现代 C++ 并发编程教程》]()的教案。
 
-不管是否购买课程，任何组织和个人遵守 [MIT](/LICENSE) 协议均可随意使用学习。
+不管是否购买课程，任何组织和个人遵守 [MIT](https://zh.wikipedia.org/zh-cn/MIT%E8%A8%B1%E5%8F%AF%E8%AD%89) 协议均可随意使用学习。
 
 [捐赠](/image/捐赠)、[issues](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/issues)、[pr](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/pulls) 均会在致谢列表中**铭记您的贡献**。
 
