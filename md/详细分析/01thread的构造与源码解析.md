@@ -2,7 +2,7 @@
 
 我们这单章是为了专门解释一下 `std::thread` 是如何构造的，是如何创建线程传递参数的，让你彻底了解这个类。
 
-我们以 **MSVC** 实现的 [`std::thread`](https://github.com/microsoft/STL/blob/main/stl/inc/thread) 代码进行讲解。
+我们以 **MSVC** 实现的 [`std::thread`](https://github.com/microsoft/STL/blob/main/stl/inc/thread) 代码进行讲解，新版 MSVC STL 的实现完全基于 **C++14**，所以即使是 C++11 引入的标准库设施，实现中可能也是使用到了 C++14 的东西。
 
 ## `std::thread` 的数据成员
 
@@ -122,7 +122,7 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
    _Get_invoke 函数很简单，就是接受一个元组类型，和形参包的索引，传递给 _Invoke 静态成员函数模板，实例化，获取它的函数指针。
 
-   > 它的形参类型我们不再过多介绍，你只需要知道 [`index_sequence`](https://en.cppreference.com/w/cpp/utility/integer_sequence)  这个东西可以用来接收一个由 `make_index_sequence` 创建的索引形参包，帮助我们进行遍历即可。
+   > 它的形参类型我们不再过多介绍，你只需要知道 [`index_sequence`](https://en.cppreference.com/w/cpp/utility/integer_sequence)  这个东西可以用来接收一个由 `make_index_sequence` 创建的索引形参包，帮助我们进行遍历元组即可。[示例代码](https://godbolt.org/z/dv88aPGac)。
 
    **_Invoke 是重中之重，它是线程实际执行的函数**，如你所见它的形参类型是 `void*` ，这是必须的，要符合 `_beginthreadex` 执行函数的类型要求。虽然是 `void*`，但是我可以将它转换为 `_Tuple*` 类型，构造一个独占智能指针，然后调用 get() 成员函数获取底层指针，解引用指针，得到元组的引用初始化`_Tup` 。
 
