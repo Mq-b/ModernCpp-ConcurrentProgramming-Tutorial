@@ -615,3 +615,103 @@ int main(){
 了解其实现，才能更好的使用它。
 
 ## 实现 `joining_thread`
+
+这个类和 `std::thread` 的区别就是析构函数会自动 `join` 。如果您好好的学习了上一节的内容，阅读了 `std::thread` 的源码，以下内容不会对您构成任何的难度。
+
+我们存储一个 `std::thread` 作为底层数据成员，稍微注意一下构造函数和赋值运算符的实现即可。
+
+```cpp
+class joining_thread {
+    std::thread t;
+public:
+    joining_thread()noexcept = default;
+    template<typename Callable, typename... Args>
+    explicit joining_thread(Callable&& func, Args&&...args) :
+        t{ std::forward<Callable>(func), std::forward<Args>(args)... } {}
+    explicit joining_thread(std::thread t_)noexcept : t{ std::move(t_) } {}
+    joining_thread(joining_thread&& other)noexcept : t{ std::move(other.t) } {}
+
+    joining_thread& operator=(std::thread&& other)noexcept {
+        if (joinable()) { // 如果当前有活跃线程，那就先执行完
+            join();
+        }
+        t = std::move(other);
+        return *this;
+    }
+    ~joining_thread() {
+        if (joinable()) {
+            join();
+        }
+    }
+    void swap(joining_thread& other)noexcept {
+        t.swap(other.t);
+    }
+    std::thread::id get_id()const noexcept {
+        return t.get_id();
+    }
+    bool joinable()const noexcept {
+        return t.joinable();
+    }
+    void join() {
+        t.join();
+    }
+    void detach() {
+        t.detach();
+    }
+    std::thread& data()noexcept {
+        return t;
+    }
+    const std::thread& data()const noexcept {
+        return t;
+    }
+};
+```
+
+简单[使用](https://godbolt.org/z/bM7Ka7be5)一下：
+
+```cpp
+int main(){
+    std::cout << std::this_thread::get_id() << '\n';
+    joining_thread thread{[]{
+            std::cout << std::this_thread::get_id() << '\n';
+    } };
+    joining_thread thread2{ std::move(thread) };
+}
+```
+
+**使用容器管理线程对象，等待线程执行结束**：
+
+```cpp
+void do_work(std::size_t id){
+    std::cout << id << '\n';
+}
+
+int main(){
+    std::vector<std::thread>threads;
+    for (std::size_t i = 0; i < 10; ++i){
+        threads.emplace_back(do_work, i); // 产生线程
+    }
+    for(auto& thread:threads){
+        thread.join();                   // 对每个线程对象调用 join()
+    }
+}
+```
+
+> [运行测试](https://godbolt.org/z/rf4h7s63M)。
+
+线程对象代表了线程，管理线程对象也就是管理线程，这个 `vector` 对象管理 10 个线程，保证他们的执行、退出。
+
+使用我们这节实现的 `joining_thread` 则不需要最后的循环 `join()`：
+
+```cpp
+int main(){
+    std::vector<joining_thread>threads;
+    for (std::size_t i = 0; i < 10; ++i){
+        threads.emplace_back(do_work, i);
+    }
+}
+```
+
+> [运行测试](https://godbolt.org/z/8qa95vMz4)。
+
+如果你自己编译了这些代码，相信你注意到了，打印的是乱序的，没什么规律，而且重复运行的结果还不一样，**这是正常现象**。多线程执行就是如此，无序且操作可能被打断。使用互斥量可以解决这些问题，这也就是下一章节的内容了。
