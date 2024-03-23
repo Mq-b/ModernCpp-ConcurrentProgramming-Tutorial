@@ -2,20 +2,20 @@
 
 我们这单章是为了专门解释一下 `std::thread` 是如何构造的，是如何创建线程传递参数的，让你彻底了解这个类。
 
-我们以 **MSVC** 实现的 [`std::thread`](https://github.com/microsoft/STL/blob/main/stl/inc/thread) 代码进行讲解，新版 MSVC STL 的实现完全基于 **C++14**，所以即使是 C++11 引入的标准库设施，实现中可能也是使用到了 C++14 的东西。
+我们以 **MSVC** 实现的 [`std::thread`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread) 代码进行讲解，新版 MSVC STL 的实现完全基于 **C++14**，所以即使是 C++11 引入的标准库设施，实现中可能也是使用到了 C++14 的东西。
 
 ## `std::thread` 的数据成员
 
 - **了解一个庞大的类，最简单的方式就是先看它的数据成员有什么**。
 
-`std::thread` 只保有一个私有数据成员 [`_Thr`](https://github.com/microsoft/STL/blob/main/stl/inc/thread#L163)：
+`std::thread` 只保有一个私有数据成员 [`_Thr`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L163)：
 
 ```cpp
 private:
     _Thrd_t _Thr;
 ```
 
-[`_Thrd_t`](https://github.com/microsoft/STL/blob/main/stl/inc/xthreads.h#L22-L26) 是一个结构体，它保有两个数据成员：
+[`_Thrd_t`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/__msvc_threads_core.hpp#L20-L24) 是一个结构体，它保有两个数据成员：
 
 ```cpp
 using _Thrd_id_t = unsigned int;
@@ -47,7 +47,7 @@ struct _Thrd_t { // thread identifier for Win32
    thread(thread&& _Other) noexcept : _Thr(_STD exchange(_Other._Thr, {})) {}
    ```
 
-   [_STD](https://github.com/microsoft/STL/blob/main/stl/inc/yvals_core.h#L1951) 是一个宏，展开就是 `::std::`，也就是 [`::std::exchange`](https://zh.cppreference.com/w/cpp/utility/exchange)，将 `_Other._Thr` 赋为 `{}` （也就是置空），返回 `_Other._Thr` 的旧值用以初始化当前对象的数据成员 `_Thr`。
+   [_STD](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/yvals_core.h#L1934) 是一个宏，展开就是 `::std::`，也就是 [`::std::exchange`](https://zh.cppreference.com/w/cpp/utility/exchange)，将 `_Other._Thr` 赋为 `{}` （也就是置空），返回 `_Other._Thr` 的旧值用以初始化当前对象的数据成员 `_Thr`。
 
 3. 复制构造函数被定义为弃置的，std::thread 不可复制。两个 std::thread 不可表示一个线程，std::thread 对线程资源是独占所有权。
 
@@ -68,7 +68,7 @@ struct _Thrd_t { // thread identifier for Win32
 
 前三个构造函数都没啥要特别聊的，非常简单，只有第四个构造函数较为复杂，且是我们本章重点，需要详细讲解。（*注意 MSVC 使用标准库的内容很多时候不加 **std::**，脑补一下就行*）
 
-如你所见，这个构造函数本身并没有做什么，它只是一个可变参数成员函数模板，增加了一些 [SFINAE](https://zh.cppreference.com/w/cpp/language/sfinae) 进行约束我们传入的[可调用](https://zh.cppreference.com/w/cpp/named_req/Callable)对象的类型不能是 `std::thread`。函数体中调用了一个函数 [**`_Start`**](https://github.com/microsoft/STL/blob/main/stl/inc/thread#L72-L87)，将我们构造函数的参数全部完美转发，去调用它，这个函数才是我们的重点，如下：
+如你所见，这个构造函数本身并没有做什么，它只是一个可变参数成员函数模板，增加了一些 [SFINAE](https://zh.cppreference.com/w/cpp/language/sfinae) 进行约束我们传入的[可调用](https://zh.cppreference.com/w/cpp/named_req/Callable)对象的类型不能是 `std::thread`。函数体中调用了一个函数 [**`_Start`**](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L72-L87)，将我们构造函数的参数全部完美转发，去调用它，这个函数才是我们的重点，如下：
 
 ```cpp
 template <class _Fn, class... _Args>
@@ -101,7 +101,7 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
 4. `constexpr auto _Invoker_proc = _Get_invoke<_Tuple>(make_index_sequence<1 + sizeof...(_Args)>{})`
 
-   - 调用 [`_Get_invoke`](https://github.com/microsoft/STL/blob/main/stl/inc/thread#L65-L68) 函数，传入 `_Tuple` 类型和一个参数序列的索引序列（为了遍历形参包）。这个函数用于获取一个函数指针，指向了一个静态成员函数 [`_Invoke`](https://github.com/microsoft/STL/blob/main/stl/inc/thread#L55-L63)，用来实际执行线程。这两个函数都非常的简单，我们来看看：
+   - 调用 [`_Get_invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L65-L68) 函数，传入 `_Tuple` 类型和一个参数序列的索引序列（为了遍历形参包）。这个函数用于获取一个函数指针，指向了一个静态成员函数 [`_Invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L55-L63)，用来实际执行线程。这两个函数都非常的简单，我们来看看：
 
     ```cpp
      template <class _Tuple, size_t... _Indices>
