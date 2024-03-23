@@ -4,7 +4,7 @@
 
 这会涉及到不少的模板技术，这没办法，就如同我们先前聊 [`std::thread` 的构造与源码分析](01thread的构造与源码解析.md)最后说的：“**不会模板，你阅读标准库源码，是无稽之谈**”。
 
-我们还是一样的，以 MSVC STL 的实现的 [`std::scoped_lock`](https://github.com/microsoft/STL/blob/main/stl/inc/mutex#L476-L528) 代码进行讲解，不用担心，我们也查看了 [`libstdc++`](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/std/mutex#L743-L802) 、[`libc++`](https://github.com/llvm/llvm-project/blob/main/libcxx/include/mutex#L424-L488)的实现，并没有太多区别，更多的是一些风格上的。而且个人觉得 MSVC 的实现是最简单直观的。
+我们还是一样的，以 MSVC STL 的实现的 [`std::scoped_lock`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/mutex#L476-L528) 代码进行讲解，不用担心，我们也查看了 [`libstdc++`](https://github.com/gcc-mirror/gcc/blob/7a01cc711f33530436712a5bfd18f8457a68ea1f/libstdc%2B%2B-v3/include/std/mutex#L743-L802) 、[`libc++`](https://github.com/llvm/llvm-project/blob/7ac7d418ac2b16fd44789dcf48e2b5d73de3e715/libcxx/include/mutex#L424-L488)的实现，并没有太多区别，更多的是一些风格上的。而且个人觉得 MSVC 的实现是最简单直观的。
 
 ## `std:scoped_lock` 的数据成员
 
