@@ -1,14 +1,14 @@
-# `std::scope_lock` 的源码实现与解析
+# `std::scoped_lock` 的源码实现与解析
 
-本单章专门介绍标准库在 C++17 引入的类模板 `std::scope_lock` 的实现，让你对它再无疑问。
+本单章专门介绍标准库在 C++17 引入的类模板 `std::scoped_lock` 的实现，让你对它再无疑问。
 
 这会涉及到不少的模板技术，这没办法，就如同我们先前聊 [`std::thread` 的构造与源码分析](01thread的构造与源码解析.md)最后说的：“**不会模板，你阅读标准库源码，是无稽之谈**”。
 
-我们还是一样的，以 MSVC STL 的实现的 [`std::scope_lock`](https://github.com/microsoft/STL/blob/main/stl/inc/mutex#L476-L528) 代码进行讲解，不用担心，我们也查看了 [`libstdc++`](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/std/mutex#L743-L802) 、[`libc++`](https://github.com/llvm/llvm-project/blob/main/libcxx/include/mutex#L424-L488)的实现，并没有太多区别，更多的是一些风格上的。而且个人觉得 MSVC 的实现是最简单直观的。
+我们还是一样的，以 MSVC STL 的实现的 [`std::scoped_lock`](https://github.com/microsoft/STL/blob/main/stl/inc/mutex#L476-L528) 代码进行讲解，不用担心，我们也查看了 [`libstdc++`](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/std/mutex#L743-L802) 、[`libc++`](https://github.com/llvm/llvm-project/blob/main/libcxx/include/mutex#L424-L488)的实现，并没有太多区别，更多的是一些风格上的。而且个人觉得 MSVC 的实现是最简单直观的。
 
-## `std:scope_lock` 的数据成员
+## `std:scoped_lock` 的数据成员
 
-`std::scope_lock` 是一个类模板，它有两个特化，也就是有三个版本，其中的数据成员也是不同的。
+`std::scoped_lock` 是一个类模板，它有两个特化，也就是有三个版本，其中的数据成员也是不同的。
 
 1. 主模板，是一个可变参数类模板，声明了一个类型形参包 `_Mutexes`，**存储了一个 `std::tuple`**，具体类型根据类型形参包决定。
 
