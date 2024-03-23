@@ -85,3 +85,7 @@ std::scoped_lock<std::mutex>lc{ m1 };                   // 匹配到偏特化版
 std::scoped_lock<std::mutex, std::mutex>lc2{ m1,m2 };   // 匹配到主模板     保有一个 std::tuple<std::mutex&,std::mutex&>
 std::scoped_lock<> lc3;                                 // 匹配到全特化版本  空
 ```
+
+## `std:scoped_lock`的构造与析构
+
+在上一节讲 `scoped_lock` 的数据成员的时候已经把这个模板类的全部源码，三个版本的代码都展示了，就不再重复。
