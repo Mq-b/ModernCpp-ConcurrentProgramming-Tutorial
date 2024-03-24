@@ -2,13 +2,13 @@
 
 本单章专门介绍标准库在 C++17 引入的类模板 `std::scoped_lock` 的实现，让你对它再无疑问。
 
-这会涉及到不少的模板技术，这没办法，就如同我们先前聊 [`std::thread` 的构造与源码分析](01thread的构造与源码解析.md)最后说的：“**不会模板，你阅读标准库源码，是无稽之谈**”。
+这会涉及到不少的模板技术，这没办法，就如同我们先前聊 [`std::thread` 的构造与源码分析](01thread的构造与源码解析.md)最后说的：“**不会模板，你阅读标准库源码，是无稽之谈**”。建议学习[现代C++模板教程](https://mq-b.github.io/Modern-Cpp-templates-tutorial/)。
 
-我们还是一样的，以 MSVC STL 的实现的 [`std::scoped_lock`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/mutex#L476-L528) 代码进行讲解，不用担心，我们也查看了 [`libstdc++`](https://github.com/gcc-mirror/gcc/blob/7a01cc711f33530436712a5bfd18f8457a68ea1f/libstdc%2B%2B-v3/include/std/mutex#L743-L802) 、[`libc++`](https://github.com/llvm/llvm-project/blob/7ac7d418ac2b16fd44789dcf48e2b5d73de3e715/libcxx/include/mutex#L424-L488)的实现，并没有太多区别，更多的是一些风格上的。而且个人觉得 MSVC 的实现是最简单直观的。
+我们还是一样的，以 MSVC STL 实现的 [`std::scoped_lock`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/mutex#L476-L528) 代码进行讲解，不用担心，我们也查看了 [`libstdc++`](https://github.com/gcc-mirror/gcc/blob/7a01cc711f33530436712a5bfd18f8457a68ea1f/libstdc%2B%2B-v3/include/std/mutex#L743-L802) 、[`libc++`](https://github.com/llvm/llvm-project/blob/7ac7d418ac2b16fd44789dcf48e2b5d73de3e715/libcxx/include/mutex#L424-L488)的实现，并没有太多区别，更多的是一些风格上的。而且个人觉得 MSVC 的实现是最简单直观的。
 
 ## `std:scoped_lock` 的数据成员
 
-`std::scoped_lock` 是一个类模板，它有两个特化，也就是有三个版本，其中的数据成员也是不同的。
+`std::scoped_lock` 是一个类模板，它有两个特化，也就是有三个版本，其中的数据成员也是不同的。并且它们都不可移动不可拷贝，“*管理类*”应该如此。
 
 1. 主模板，是一个可变参数类模板，声明了一个类型形参包 `_Mutexes`，**存储了一个 `std::tuple`**，具体类型根据类型形参包决定。
 
@@ -89,3 +89,51 @@ std::scoped_lock<> lc3;                                 // 匹配到全特化版
 ## `std:scoped_lock`的构造与析构
 
 在上一节讲 `scoped_lock` 的数据成员的时候已经把这个模板类的全部源码，三个版本的代码都展示了，就不再重复。
+
+这三个版本中，**只有两个版本需要介绍**，也就是
+
+1. 形参包元素数量为一的偏特化，只管理一个互斥量的。
+2. 主模板，可以管理任意个数的互斥量。
+
+那这两个的共同点是什么呢？***构造上锁，析构解锁***。这很明显，明确这一点我们就开始讲吧。
+
+---
+
+```cpp
+std::mutex m;
+void f(){
+    m.lock();
+    std::lock_guard<std::mutex> lc{ m, std::adopt_lock };
+}
+void f2(){
+    m.lock();
+    std::scoped_lock<std::mutex>sp{ std::adopt_lock,m };
+}
+```
+
+这段代码为你展示了 `std::lock_guard` 和 `std::scoped_lock` 形参包元素数量为一的偏特化的唯一区别：**调用不会上锁的构造函数的参数顺序不同**。那么到此也就够了。
+
+接下来我们进入 `std::scoped_lock`  主模板的讲解：
+
+```cpp
+explicit scoped_lock(_Mutexes&... _Mtxes) : _MyMutexes(_Mtxes...) { // construct and lock
+        _STD lock(_Mtxes...);
+    }
+```
+
+这个构造函数做了两件事情，初始化数据成员 `_MyMutexes`让它保有这些互斥量的引用，以及给所有互斥量上锁，使用了 [`std::lock`](https://zh.cppreference.com/w/cpp/thread/lock) 帮助我们完成这件事情。
+
+```cpp
+explicit scoped_lock(adopt_lock_t, _Mutexes&... _Mtxes) noexcept // strengthened
+    : _MyMutexes(_Mtxes...) {} // construct but don't lock
+```
+
+这个构造函数不上锁，只是初始化数据成员 `_MyMutexes`让它保有这些互斥量的引用。
+
+```cpp
+~scoped_lock() noexcept {
+    _STD apply([](_Mutexes&... _Mtxes) { (..., (void) _Mtxes.unlock()); }, _MyMutexes);
+}
+```
+
+析构函数就稍微聊一下了，主要是用 `std::apply` 去遍历 `std::tuple` 保有的互斥量的引用，进行解锁。
