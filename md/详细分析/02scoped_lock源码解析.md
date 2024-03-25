@@ -6,7 +6,7 @@
 
 我们还是一样的，以 MSVC STL 实现的 [`std::scoped_lock`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/mutex#L476-L528) 代码进行讲解，不用担心，我们也查看了 [`libstdc++`](https://github.com/gcc-mirror/gcc/blob/7a01cc711f33530436712a5bfd18f8457a68ea1f/libstdc%2B%2B-v3/include/std/mutex#L743-L802) 、[`libc++`](https://github.com/llvm/llvm-project/blob/7ac7d418ac2b16fd44789dcf48e2b5d73de3e715/libcxx/include/mutex#L424-L488)的实现，并没有太多区别，更多的是一些风格上的。而且个人觉得 MSVC 的实现是最简单直观的。
 
-## `std:scoped_lock` 的数据成员
+## `std::scoped_lock` 的数据成员
 
 `std::scoped_lock` 是一个类模板，它有两个特化，也就是有三个版本，其中的数据成员也是不同的。并且它们都不可移动不可拷贝，“*管理类*”应该如此。
 
@@ -86,7 +86,7 @@ std::scoped_lock<std::mutex, std::mutex>lc2{ m1,m2 };   // 匹配到主模板   
 std::scoped_lock<> lc3;                                 // 匹配到全特化版本  空
 ```
 
-## `std:scoped_lock`的构造与析构
+## `std::scoped_lock`的构造与析构
 
 在上一节讲 `scoped_lock` 的数据成员的时候已经把这个模板类的全部源码，三个版本的代码都展示了，就不再重复。
 
