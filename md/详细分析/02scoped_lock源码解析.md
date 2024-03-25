@@ -136,4 +136,45 @@ explicit scoped_lock(adopt_lock_t, _Mutexes&... _Mtxes) noexcept // strengthened
 }
 ```
 
-析构函数就稍微聊一下了，主要是用 `std::apply` 去遍历 `std::tuple` 保有的互斥量的引用，进行解锁。
+析构函数就要稍微聊一下了，主要是用 [`std::apply`](https://zh.cppreference.com/w/cpp/utility/apply) 去遍历 [`std::tuple`](https://zh.cppreference.com/w/cpp/utility/tuple) ，让元组保有的互斥量引用都进行解锁。简单来说是 `std::apply` 可以将元组存储的参数全部拿出，用于调用这个可变参数的可调用对象，我们就能利用折叠表达式展开形参包并对其调用 `unlock()`。
+
+---
+
+```cpp
+template< class F, class Tuple >
+constexpr decltype(auto) apply( F&& f, Tuple&& t );
+```
+
+这个函数模板接受两个参数，一个[*可调用* *(Callable)*](https://zh.cppreference.com/w/cpp/named_req/Callable)对象 f，以及一个元组 t，用做调用 f 。我们可以自己简单实现一下它，其实不算难，这种遍历元组的方式在之前讲 `std::thread` 的源码的时候也提到过。
+
+```cpp
+template<class Callable, class Tuple, std::size_t...index>
+constexpr decltype(auto) Apply_impl(Callable&& obj,Tuple&& tuple,std::index_sequence<index...>){
+    return std::invoke(std::forward<Callable>(obj), std::get<index>(std::forward<Tuple>(tuple))...);
+}
+
+template<class Callable, class Tuple>
+constexpr decltype(auto) apply(Callable&& obj, Tuple&& tuple){
+    return Apply_impl(std::forward<Callable>(obj), std::forward<Tuple>(tuple),
+        std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{});
+}
+```
+
+其实就是把元组给解包了，利用了 `std::index_sequence` + `std::make_index_sequence` 然后就用 `std::get` 形参包展开用 `std::invoke` 调用可调用对象即可，**非常经典的处理可变参数做法**，这个非常重要，一定要会使用。
+
+举一个简单的调用例子：
+
+```cpp
+std::tuple<int, std::string, char>tuple{66,"😅",'c'};
+::apply([](const auto&... t) { ((std::cout << t << ' '), ...); }, tuple);
+```
+
+> [运行测试](https://godbolt.org/z/n4aKo4xbr)。
+
+使用了[折叠表达式](https://zh.cppreference.com/w/cpp/language/fold)展开形参包，打印了元组所有的元素。
+
+## 总结
+
+**如你所见，其实这很简单**。至少使用与了解其设计原理是很简单的。唯一的难度或许只有那点源码，处理可变参数，这会涉及不少模板技术，既常见也通用。还是那句话：“***不会模板，你阅读标准库源码，是无稽之谈***”。
+
+相对于 `std::thread` 的源码解析，`std::scoped_lock` 还是简单的多。
