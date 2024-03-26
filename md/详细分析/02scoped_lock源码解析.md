@@ -138,6 +138,12 @@ explicit scoped_lock(adopt_lock_t, _Mutexes&... _Mtxes) noexcept // strengthened
 
 析构函数就要稍微聊一下了，主要是用 [`std::apply`](https://zh.cppreference.com/w/cpp/utility/apply) 去遍历 [`std::tuple`](https://zh.cppreference.com/w/cpp/utility/tuple) ，让元组保有的互斥量引用都进行解锁。简单来说是 `std::apply` 可以将元组存储的参数全部拿出，用于调用这个可变参数的可调用对象，我们就能利用折叠表达式展开形参包并对其调用 `unlock()`。
 
+> 不在乎其返回类型只用来实施它的副作用，显式转换为 `(void)` 也就是[*弃值表达式*](https://zh.cppreference.com/w/cpp/language/expressions#.E5.BC.83.E5.80.BC.E8.A1.A8.E8.BE.BE.E5.BC.8F)。在我们之前讲的 `std::thread` 源码中也有这种[用法](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L82)。
+>
+> 不过你可能有疑问：“我们的标准库的那些[互斥量](https://zh.cppreference.com/w/cpp/thread#.E4.BA.92.E6.96.A5) `unlock()` 返回类型都是 `void` 呀，为什么要这样？”
+>
+> 的确，这是个好问题，[libstdc++](https://github.com/gcc-mirror/gcc/blob/7a01cc711f33530436712a5bfd18f8457a68ea1f/libstdc%2B%2B-v3/include/std/mutex#L757-L758) 和 [libc++](https://github.com/llvm/llvm-project/blob/7ac7d418ac2b16fd44789dcf48e2b5d73de3e715/libcxx/include/mutex#L472-L475) 都没这样做，或许 MSVC STL 想着会有人设计的互斥量让它的 `unlock()` 返回类型不为 `void`，毕竟 [*互斥体* *(Mutex)*](https://zh.cppreference.com/w/cpp/named_req/Mutex) 没有要求 `unlock()` 的返回类型。
+
 ---
 
 ```cpp

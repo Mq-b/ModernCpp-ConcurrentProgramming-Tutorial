@@ -1,8 +1,8 @@
 # `std::thread` 的构造-源码解析
 
-我们这单章是为了专门解释一下 `std::thread` 是如何构造的，是如何创建线程传递参数的，让你彻底了解这个类。
+我们这单章是为了专门解释一下 C++11 引入的 `std::thread` 是如何构造的，是如何创建线程传递参数的，让你彻底了解这个类。
 
-我们以 **MSVC** 实现的 [`std::thread`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread) 代码进行讲解，新版 MSVC STL 的实现完全基于 **C++14**，所以即使是 C++11 引入的标准库设施，实现中可能也是使用到了 C++14 的东西。
+我们以 **MSVC** 实现的 [`std::thread`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread) 代码进行讲解，MSVC STL 很早之前就不支持 C++11 了，它的实现完全基于 **C++14**，出于某些原因 **C++17** 的一些库（如 [`invoke`](https://zh.cppreference.com/w/cpp/utility/functional/invoke)， _v 变量模板）被向后移植到了 **C++14** 模式，所以即使是 C++11 标准库设施，实现中可能也是使用到了 C++14、17 的东西。
 
 ## `std::thread` 的数据成员
 
