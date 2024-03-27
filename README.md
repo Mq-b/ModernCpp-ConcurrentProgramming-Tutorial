@@ -8,7 +8,7 @@
 
 本仓库用来存放 B 站课程[《现代 C++ 并发编程教程》]()的教案、代码。
 
-不管是否购买课程，任何组织和个人遵守 [MIT](/LICENSE) 协议均可随意使用学习。
+不管是否购买课程，任何组织和个人遵守 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.zh-hans) 协议均可随意使用学习。
 
 [捐赠](/image/捐赠)、[issues](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/issues)、[pr](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/pulls) 均会在致谢列表中**铭记您的贡献**。
 
