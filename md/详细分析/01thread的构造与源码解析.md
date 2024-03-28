@@ -154,7 +154,20 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
 ## 总结
 
-需要注意，libstdc++ 和 libc++ 可能不同，就比如它们 64位环境下 `sizeof(std::thread)` 的结果就是 **8**，它们的实现只保有一个线程 ID。
+需要注意，libstdc++ 和 libc++ 可能不同（也得看线程模型是 win32 还是 POSIX），就比如它们 64 位环境下 `sizeof(std::thread)` 的结果就可能是 **8**。libstdc++ 的实现只[保有一个 `std::thread::id`](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/bits/std_thread.h#L123)。[参见](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/bits/std_thread.h#L81-L85)。不过实测 gcc 不管是 `win32` 还是 `POSIX` 线程模型，线程对象的大小都是 8，宏 `_GLIBCXX_HAS_GTHREADS` 的值都为 1。
+
+> ```cpp
+>  class thread
+>   {
+>   public:
+> #ifdef _GLIBCXX_HAS_GTHREADS
+>     using native_handle_type = __gthread_t;
+> #else
+>     using native_handle_type = int;
+> #endif
+> ```
+>
+> `__gthread_t` 即 `void*`。
 
 我们这里的源码解析涉及到的 C++ 技术很多，我们也没办法每一个都单独讲，那会显得文章很冗长，而且也不是重点。
 
