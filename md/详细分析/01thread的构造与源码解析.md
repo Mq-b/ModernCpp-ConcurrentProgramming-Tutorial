@@ -154,7 +154,7 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
 ## 总结
 
-需要注意，libstdc++ 和 libc++ 可能不同（也得看线程模型是 win32 还是 POSIX），就比如它们 64 位环境下 `sizeof(std::thread)` 的结果就可能是 **8**。libstdc++ 的实现只[保有一个 `std::thread::id`](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/bits/std_thread.h#L123)。[参见](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/bits/std_thread.h#L81-L85)。不过实测 gcc 不管是 `win32` 还是 `POSIX` 线程模型，线程对象的大小都是 8，宏 `_GLIBCXX_HAS_GTHREADS` 的值都为 1。
+需要注意，libstdc++ 和 libc++ 可能不同，就比如它们 64 位环境下 `sizeof(std::thread)` 的结果就可能是 **8**。libstdc++ 的实现只[保有一个 `std::thread::id`](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/bits/std_thread.h#L123)。[参见](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/bits/std_thread.h#L81-L85)。不过实测 gcc 不管是 `win32` 还是 `POSIX` 线程模型，线程对象的大小都是 8，宏 `_GLIBCXX_HAS_GTHREADS` 的值都为 1（[GThread](https://docs.gtk.org/glib/struct.Thread.html)）。
 
 > ```cpp
 >  class thread
