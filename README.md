@@ -1,7 +1,7 @@
 <div align="center">
 
 <a herf="https://zh.cppreference.com/w/cpp/thread">
-<img src="image/现代C++并发编程教程.png" width=512px alt="cpp"/>
+<img src="/image/现代C++并发编程教程.png" width=512px alt="cpp"/>
 </a>
 
 # 现代C++并发编程教程

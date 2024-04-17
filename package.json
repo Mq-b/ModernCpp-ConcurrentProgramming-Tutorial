@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "docs:build": "vuepress-vite build .",
+    "docs:dev": "vuepress-vite dev .",
+    "docs:preview": "vuepress-vite preview .",
+    "docs:clean-dev": "vuepress-vite dev . --clean-cache",
+    "docs:update-package": "npx vp-update"
+  },
+  "devDependencies": {
+    "@vuepress/bundler-vite": "2.0.0-rc.9",
+    "vue": "^3.4.23",
+    "vuepress": "2.0.0-rc.9",
+    "vuepress-plugin-search-pro": "^2.0.0-rc.36",
+    "vuepress-theme-hope": "2.0.0-rc.36"
+  }
+}
