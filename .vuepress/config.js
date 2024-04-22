@@ -37,17 +37,13 @@ export default defineUserConfig({
         contributors: false,
         darkmode: 'toggle',
         pageInfo: ['ReadingTime'],
+        plugins: {
+            mdEnhance: {
+                footnote: true,
+                imgLazyload: true
+            },
+            searchPro: true
+        }
     }),
-    plugins: [
-        mdEnhance({
-            footnote: true,
-            imgLazyload: true
-        }),
-        searchProPlugin({
-            indexContent: true,
-            autoSuggestions: true
-        })
-    ],
-
     bundler: viteBundler({}),
 })
