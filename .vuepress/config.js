@@ -1,8 +1,7 @@
 import { viteBundler } from '@vuepress/bundler-vite';
 import { defineUserConfig } from 'vuepress';
 import { logoPath, repoBase, repoName, repoUrl } from './params';
-import { hopeTheme, mdEnhance } from 'vuepress-theme-hope';
-import { searchProPlugin } from 'vuepress-plugin-search-pro';
+import { hopeTheme } from 'vuepress-theme-hope';
 
 const tutorialPath = '/md/';
 const srcCodePath = tutorialPath + '详细分析/';
