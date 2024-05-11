@@ -171,7 +171,7 @@ constexpr decltype(auto) apply(Callable&& obj, Tuple&& tuple){
 举一个简单的调用例子：
 
 ```cpp
-std::tuple<int, std::string, char>tuple{66,"😅",'c'};
+std::tuple<int, std::string, char> tuple{ 66,"😅",'c' };
 ::apply([](const auto&... t) { ((std::cout << t << ' '), ...); }, tuple);
 ```
 

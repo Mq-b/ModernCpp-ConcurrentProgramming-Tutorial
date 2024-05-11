@@ -18,6 +18,8 @@ export default defineUserConfig({
             { text: '使用线程', link: tutorialPath + '02使用线程', },
             { text: '共享数据', link: tutorialPath + '03共享数据', },
             { text: '同步操作', link: tutorialPath + '04同步操作', },
+            { text: '内存模型与原子操作', link: tutorialPath + '05内存模型与原子操作', },
+            { text: '协程', link: tutorialPath + '06协程', },
             {
                 text: '详细分析', link: srcCodePath,
                 collapsible: true,
