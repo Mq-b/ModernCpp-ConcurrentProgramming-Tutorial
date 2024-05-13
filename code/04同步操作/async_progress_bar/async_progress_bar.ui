@@ -1,0 +1,28 @@
+<UI version="4.0" >
+ <class>async_progress_barClass</class>
+ <widget class="QMainWindow" name="async_progress_barClass" >
+  <property name="objectName" >
+   <string notr="true">async_progress_barClass</string>
+  </property>
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle" >
+   <string>async_progress_bar</string>
+  </property>  <widget class="QMenuBar" name="menuBar" />
+  <widget class="QToolBar" name="mainToolBar" />
+  <widget class="QWidget" name="centralWidget" />
+  <widget class="QStatusBar" name="statusBar" />
+ </widget>
+ <layoutDefault spacing="6" margin="11" />
+ <pixmapfunction></pixmapfunction>
+ <resources>
+   <include location="async_progress_bar.qrc"/>
+ </resources>
+ <connections/>
+</UI>

@@ -38,3 +38,5 @@ node_modules/
 .vuepress/dist/
 
 .vscode/
+.vs/
+x64/
