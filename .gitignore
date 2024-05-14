@@ -40,3 +40,7 @@ node_modules/
 .vscode/
 .vs/
 x64/
+out/
+
+CMakePresets.json
+CMakeUserPresets.json

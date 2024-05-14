@@ -8,7 +8,6 @@
 #include <thread>
 #include <future>
 #include <chrono>
-#include <format>
 #include "ui_async_progress_bar.h"
 
 using namespace std::chrono_literals;
