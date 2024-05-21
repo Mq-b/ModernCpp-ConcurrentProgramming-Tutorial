@@ -17,7 +17,7 @@ public:
     }
 
     std::string get(const std::string& key) const {
-        std::shared_lock<std::shared_mutex> lock(mutex_);
+        std::shared_lock<std::shared_mutex> lock{ mutex_ };
         const auto it = data_.find(key);
         return (it != data_.end()) ? it->second : ""; // 如果没有找到键返回空字符串
     }
