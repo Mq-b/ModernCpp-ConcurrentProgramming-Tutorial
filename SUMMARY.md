@@ -1,6 +1,7 @@
 # Summary
 
-* [介绍](README.md)
+* [首页](README.md)
+* [阅读须知](md/README.md)
 * [基本概念](md/01基本概念.md)
 * [使用线程](md/02使用线程.md)
 * [共享数据](md/03共享数据.md)
