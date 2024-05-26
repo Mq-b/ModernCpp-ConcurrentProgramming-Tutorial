@@ -14,7 +14,7 @@ export default defineUserConfig({
     theme: hopeTheme({
         sidebar: [
             { text: '首页', link: '/', },
-            { text: '阅读须知', link: tutorialPath + `README` },
+            { text: '阅读须知', link: `/md` },
             { text: '基本概念', link: tutorialPath + '01基本概念', },
             { text: '使用线程', link: tutorialPath + '02使用线程', },
             { text: '共享数据', link: tutorialPath + '03共享数据', },
