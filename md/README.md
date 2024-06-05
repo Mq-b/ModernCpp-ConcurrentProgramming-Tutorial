@@ -21,16 +21,17 @@
 &emsp;&emsp;我们的代码风格较为简洁明了，命名全部使用下划线连接，而不是驼峰命名法。花括号通常只占一行，简短的代码可以不额外占行。一般初始化时使用 `{}`，而非 `()` 或者 `=` 。这样简单直观，避免歧义和许多问题。`#include` 引入头文件时需要在尖括号或引号前后加空格。
 
 ```cpp
-#include <iostream> // 空格
-struct move_only {
+struct move_only{
     move_only() { std::puts("默认构造"); }
-    move_only(const move_only&) = delete;
-    move_only(move_only&&)noexcept {
-        std::puts("移动构造");
+    move_only(move_only&&)noexcept { std::puts("移动构造"); }
+    move_only& operator=(move_only&&) noexcept {
+        std::puts("移动赋值");
+        return *this;
     }
+    move_only(const move_only&) = delete;
 };
 
-int main() {
+int main(){
     move_only m{};
     char buffer[1024]{} // 全部初始化为 0
 }
