@@ -68,7 +68,37 @@ struct _Thrd_t { // thread identifier for Win32
 
 前三个构造函数都没啥要特别聊的，非常简单，只有第四个构造函数较为复杂，且是我们本章重点，需要详细讲解。（*注意 MSVC 使用标准库的内容很多时候不加 **std::**，脑补一下就行*）
 
-如你所见，这个构造函数本身并没有做什么，它只是一个可变参数成员函数模板，增加了一些 [SFINAE](https://zh.cppreference.com/w/cpp/language/sfinae) 进行约束我们传入的[可调用](https://zh.cppreference.com/w/cpp/named_req/Callable)对象的类型不能是 `std::thread`。函数体中调用了一个函数 [**`_Start`**](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L72-L87)，将我们构造函数的参数全部完美转发，去调用它，这个函数才是我们的重点，如下：
+如你所见，这个构造函数本身并没有做什么，它只是一个可变参数成员函数模板，增加了一些 [SFINAE](https://zh.cppreference.com/w/cpp/language/sfinae) 进行约束我们传入的[可调用](https://zh.cppreference.com/w/cpp/named_req/Callable)对象的类型不能是 `std::thread`。关于这个约束你可能有问题，因为 `std::thread` 他并没有 `operator()` 的重载，不是可调用类型，这个 `enable_if_t` 的意义是什么呢？其实很简单，如下：
+
+```cpp
+struct X{
+    X(X&& x)noexcept{}
+    template <class Fn, class... Args>
+    X(Fn&& f,Args&&...args){}
+    X(const X&) = delete;
+};
+
+X x{ [] {} };
+X x2{ x }; // 选择到了有参构造函数，不导致编译错误
+```
+
+以上这段代码可以正常的[通过编译](https://godbolt.org/z/6zhW6xjqP)。这是重载决议的事情，我们知道，`std::thread` 是不可复制的，这种代码自然不应该让它通过编译，选择到我们的有参构造，所以我们添加一个约束让其不能选择到我们的有参构造：
+
+```cpp
+template <class Fn, class... Args, std::enable_if_t<!std::is_same_v<std::remove_cvref_t<Fn>, X>, int> = 0>
+```
+
+这样，这段代码就会正常的出现[编译错误](https://godbolt.org/z/Mc1h1GcdT)，信息如下：
+
+```txt
+error C2280: “X::X(const X &)”: 尝试引用已删除的函数
+note: 参见“X::X”的声明
+note: “X::X(const X &)”: 已隐式删除函数
+```
+
+也就满足了我们的要求，重载决议选择到了弃置复制构造函数产生编译错误，这也就是源码中添加约束的目的。
+
+而构造函数体中调用了一个函数 [**`_Start`**](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L72-L87)，将我们构造函数的参数全部完美转发，去调用它，这个函数才是我们的重点，如下：
 
 ```cpp
 template <class _Fn, class... _Args>
