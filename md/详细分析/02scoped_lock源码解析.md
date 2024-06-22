@@ -81,8 +81,8 @@
 ```cpp
 std::mutex m1,m2;
 
-std::scoped_lock<std::mutex>lc{ m1 };                   // 匹配到偏特化版本  保有一个 std::mutex&
-std::scoped_lock<std::mutex, std::mutex>lc2{ m1,m2 };   // 匹配到主模板     保有一个 std::tuple<std::mutex&,std::mutex&>
+std::scoped_lock<std::mutex> lc{ m1 };                   // 匹配到偏特化版本  保有一个 std::mutex&
+std::scoped_lock<std::mutex, std::mutex> lc2{ m1,m2 };   // 匹配到主模板     保有一个 std::tuple<std::mutex&,std::mutex&>
 std::scoped_lock<> lc3;                                 // 匹配到全特化版本  空
 ```
 
