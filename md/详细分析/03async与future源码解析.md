@@ -38,6 +38,8 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
 1. **模板参数和函数体外部信息**：
 
+   - `_EXPOPT_STD` 是一个宏，当 `_BUILD_STD_MODULE` 宏定义且启用了 C++20 时，会被定义为 `export`，以便导出模块；否则它为空。
+
    - `_Fty` 表示可调用对象的类型。
    - `_ArgTypes` 是一个类型形参包，表示调用该可调用对象所需的参数类型。
    - `_NODISCARD_ASYNC` 是一个宏，表示属性 `[[nodiscard]]`，用于标记此函数的返回值不应被忽略。
@@ -80,7 +82,7 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
    `using _Ptype = typename _P_arg_type<_Ret>::type;`
 
-   - 定义 `_Ret` 类型别名，它是使用 `_ArgTypes` 类型参数调用 `_Fty` 类型的可调用对象后得到的结果类型。也就是我们传入的可调用对象的返回类型；同样使用了 `_Invoke_result_t` 与 `decay_t`。
+   - 定义 `_Ret` 类型别名，它是使用 `_ArgTypes` 类型参数调用 `_Fty` 类型的可调用对象后得到的结果类型。也就是我们传入的可调用对象的返回类型；同样使用了 `_Invoke_result_t`（等价于  [`std::invoke_result_t`](https://zh.cppreference.com/w/cpp/types/result_of) ） 与 `decay_t`。
 
    - 其实 `_Ptype` 的定义确实在大多数情况下和 `_Ret` 是相同的，类模板 _P_arg_type 只是为了处理引用类型以及 void 的情况，参见 `_P_arg_type` 的实现：
 
@@ -101,6 +103,76 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
      };
      ```
 
-     `_Ptype`：处理异步任务返回值的方式类型，它在语义上强调了异步任务返回值的处理方式，具有不同的实现逻辑和使用场景。在当前我们难以直接展示它的作用，将在后文详细探讨 `_Promise` 类型的内部实现，展示此别名的意义。
+     `_Ptype`：处理异步任务返回值的方式类型，它在语义上强调了异步任务返回值的处理方式，具有不同的实现逻辑和使用场景。在当前我们难以直接展示它的作用，不过可以推测，这个“`P`” 表示的是后文将使用的 `_Promise` 类模板。也就是说，定义 `_Ptype` 是为了配合 `_Promise` 的使用。我们将会在后文详细探讨 `_Promise` 类型的内部实现，并进一步解释 `_Ptype` 的具体作用。
 
-5. 
+5. `_Promise<_Ptype> _Pr`
+
+   `_Promise` 类型本身不重要，很简单，关键还在于其存储的数据成员。
+
+   ```cpp
+   template <class _Ty>
+   class _Promise {
+   public:
+       _Promise(_Associated_state<_Ty>* _State_ptr) noexcept : _State(_State_ptr, false), _Future_retrieved(false) {}
+   
+       _Promise(_Promise&&) = default;
+   
+       _Promise& operator=(_Promise&&) = default;
+   
+       void _Swap(_Promise& _Other) noexcept {
+           _State._Swap(_Other._State);
+           _STD swap(_Future_retrieved, _Other._Future_retrieved);
+       }
+   
+       const _State_manager<_Ty>& _Get_state() const noexcept {
+           return _State;
+       }
+       _State_manager<_Ty>& _Get_state() noexcept {
+           return _State;
+       }
+   
+       _State_manager<_Ty>& _Get_state_for_set() {
+           if (!_State.valid()) {
+               _Throw_future_error2(future_errc::no_state);
+           }
+   
+           return _State;
+       }
+   
+       _State_manager<_Ty>& _Get_state_for_future() {
+           if (!_State.valid()) {
+               _Throw_future_error2(future_errc::no_state);
+           }
+   
+           if (_Future_retrieved) {
+               _Throw_future_error2(future_errc::future_already_retrieved);
+           }
+   
+           _Future_retrieved = true;
+           return _State;
+       }
+   
+       bool _Is_valid() const noexcept {
+           return _State.valid();
+       }
+   
+       bool _Is_ready() const noexcept {
+           return _State._Is_ready();
+       }
+   
+       _Promise(const _Promise&)            = delete;
+       _Promise& operator=(const _Promise&) = delete;
+   
+   private:
+       _State_manager<_Ty> _State;
+       bool _Future_retrieved;
+   };
+   ```
+
+   `_Promise` 类是对 `_State_manager` 类型的**包装**，并增加了一个表示状态的成员 `_Future_retrieved`。
+
+   状态成员用于跟踪 `_Promise` 是否已经调用过 `_Get_state_for_future()` 成员函数；它默认为 `false`，在**第一次**调用 `_Get_state_for_future()` 成员函数时被置为 `true`，如果二次调用，就会抛出 [`future_errc::future_already_retrieved`](https://zh.cppreference.com/w/cpp/thread/future_errc) 异常。
+
+   > 这类似于 `std::promise` 调用 [`get_future()`](https://zh.cppreference.com/w/cpp/thread/promise/get_future) 成员函数。[测试](https://godbolt.org/z/8anc9b3PT)。
+   
+   `_Promise` 的构造函数
