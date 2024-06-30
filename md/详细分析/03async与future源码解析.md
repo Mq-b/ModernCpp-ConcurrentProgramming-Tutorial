@@ -4,13 +4,17 @@
 
 和之前一样的，我们以 MSVC STL 的实现进行讲解。
 
-`std::future`，即未来体，是用来管理一个共享状态的类模板，用于等待关联任务的完成并获取其返回值。它自身不包含状态，需要通过如 `std::async` 之类的函数进行初始化。`std::async` 函数模板返回一个已经初始化且具有共享状态的 `std::future` 对象。因此，所有操作的开始应从 `std::async` 开始讲述。
+`std::future`，即未来体，是用来管理一个共享状态的类模板，用于等待关联任务的完成并获取其返回值。它自身不包含状态，需要通过如 `std::async` 之类的函数进行初始化。`std::async` 函数模板返回一个已经初始化且具有共享状态的 `std::future` 对象。
+
+因此，所有操作的开始应从 `std::async` 开始讲述。
+
+需要注意的是，它们的实现彼此之间会共用不少设施，在讲述 `std::async` 源码的时候，对于 `std::future` 的内容同样重要。
 
 > MSVC STL 很早之前就不支持 C++11 了，它的实现完全基于 **C++14**，出于某些原因 **C++17** 的一些库（如 [`invoke`](https://zh.cppreference.com/w/cpp/utility/functional/invoke)， _v 变量模板）被向后移植到了 **C++14** 模式，所以即使是 C++11 标准库设施，实现中可能也是使用到了 C++14、17 的东西。
 >
 > 注意，不用感到奇怪。
 
-## 正式
+## `std::async`
 
 ```cpp
 _EXPORT_STD template <class _Fty, class... _ArgTypes>
@@ -107,7 +111,7 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
 5. `_Promise<_Ptype> _Pr`
 
-   `_Promise` 类型本身不重要，很简单，关键还在于其存储的数据成员。
+   [`_Promise`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L999-L1055) 类型本身不重要，很简单，关键还在于其存储的数据成员。
 
    ```cpp
    template <class _Ty>
@@ -169,10 +173,101 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
    };
    ```
 
-   `_Promise` 类是对 `_State_manager` 类型的**包装**，并增加了一个表示状态的成员 `_Future_retrieved`。
+   `_Promise` 类模板是对 **[`_State_manager`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L688-L825) 类模板的包装**，并增加了一个表示状态的成员 `_Future_retrieved`。
 
    状态成员用于跟踪 `_Promise` 是否已经调用过 `_Get_state_for_future()` 成员函数；它默认为 `false`，在**第一次**调用 `_Get_state_for_future()` 成员函数时被置为 `true`，如果二次调用，就会抛出 [`future_errc::future_already_retrieved`](https://zh.cppreference.com/w/cpp/thread/future_errc) 异常。
 
    > 这类似于 `std::promise` 调用 [`get_future()`](https://zh.cppreference.com/w/cpp/thread/promise/get_future) 成员函数。[测试](https://godbolt.org/z/8anc9b3PT)。
+
+   `_Promise` 的构造函数接受的却不是 `_State_manager` 类型的对象，而是 `_Associated_state` 类型的指针，用来初始化数据成员 `_State`。
+
+   ```cpp
+   _State(_State_ptr, false)
+   ```
+
+   这是因为实际上 `_State_manager` 类型的[实现](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L822-L824)就是保有了 [`Associated_state`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L198-L445) 指针，以及一个状态成员：
+
+   ```cpp
+   private:
+       _Associated_state<_Ty>* _Assoc_state = nullptr;
+       bool _Get_only_once                  = false;
+   ```
+
+   也可以简单理解 `_State_manager` 又是对 `Associated_state` 的包装，其中的大部分接口实际上是调用 `_Assoc_state` 的成员函数，如：
+
+   ```cpp
+   void wait() const { // wait for signal
+       if (!valid()) {
+           _Throw_future_error2(future_errc::no_state);
+       }
    
-   `_Promise` 的构造函数
+       _Assoc_state->_Wait();
+   }
+   ```
+
+   - **一切的重点，最终在 `Associated_state` 上**。
+
+   然而它也是最为复杂的，我们在讲 `std::thread`-构造源码解析 中提到过一句话：
+
+   > - **了解一个庞大的类，最简单的方式就是先看它的数据成员有什么**。
+
+   ```cpp
+   public:
+       conditional_t<is_default_constructible_v<_Ty>, _Ty, _Result_holder<_Ty>> _Result;
+       exception_ptr _Exception;
+       mutex _Mtx;
+       condition_variable _Cond;
+       bool _Retrieved;
+       int _Ready;
+       bool _Ready_at_thread_exit; // TRANSITION, ABI
+       bool _Has_stored_result;
+       bool _Running;
+   ```
+
+    这是 `Associated_state` 的数据成员，其中有许多的 `bool` 类型的状态成员，同时最为明显重要的三个设施是：**异常指针**、**互斥量**、**条件变量**。
+
+   根据这些数据成员我们就能很轻松的猜测出 `Associated_state` 模板类的作用和工作方式。
+
+   - **异常指针**：用于存储异步任务中可能发生的异常，以便在调用 `future::get` 时能够重新抛出异常。
+   - **互斥量和条件变量**：用于在异步任务和等待任务之间进行同步。当异步任务完成时，条件变量会通知等待的任务。
+
+   `_Associated_state` 模板类负责管理异步任务的状态，包括结果的存储、异常的处理以及任务完成的通知。它是实现 `std::future` 和 `std::promise` 的核心组件之一，通过 `_State_manager` 和 `_Promise` 类模板对其进行封装和管理，提供更高级别的接口和功能。
+
+   ```plaintext
+   +---------------------+
+   |    _Promise<_Ty>    |
+   |---------------------|
+   | - _State            | -----> +---------------------+
+   | - _Future_retrieved |       |  _State_manager<_Ty> |
+   +---------------------+       |----------------------|
+                                 | - _Assoc_state       | -----> +-------------------------+
+                                 | - _Get_only_once     |       | _Associated_state<_Ty>   |
+                                 +----------------------+       +-------------------------+
+   
+   ```
+
+   上图是 `_Promise`、_`State_manager`、`_Associated_state` 之间的**包含关系示意图**，理解这个关系对我们后面**非常重要**。
+
+   到此就可以了，我们不需要在此处就详细介绍这三个类，但是你需要大概的看一下，这非常重要。
+
+6. 初始化 `_Promie` 对象：
+
+   `_Get_associated_state<_Ret>(_Policy, _Fake_no_copy_callable_adapter<_Fty, _ArgTypes...>(_STD forward<_Fty>(_Fnarg), _STD forward<_ArgTypes>(_Args)...))`
+
+   很明显，这是一个函数调用，将我们 `std::async` 的参数全部转发给它，它是重要而直观的，代码如下：
+
+   ```cpp
+   template <class _Ret, class _Fty>
+   _Associated_state<typename _P_arg_type<_Ret>::type>* _Get_associated_state(launch _Psync, _Fty&& _Fnarg) {
+       // construct associated asynchronous state object for the launch type
+       switch (_Psync) { // select launch type
+       case launch::deferred:
+           return new _Deferred_async_state<_Ret>(_STD forward<_Fty>(_Fnarg));
+       case launch::async: // TRANSITION, fixed in vMajorNext, should create a new thread here
+       default:
+           return new _Task_async_state<_Ret>(_STD forward<_Fty>(_Fnarg));
+       }
+   }
+   ```
+
+   在 MSVC STL 的实现中，`launch::async | launch::deferred` 与 `launch::async` 执行策略**毫无区别**。这段代码的 `switch` 语句有两个 `case` 和一个 `default`，如你所见，`case launch::async` 是为空的，除了 `launch::deferred` 最终都会进入 `default`，即都执行 `launch::async` 策略。
