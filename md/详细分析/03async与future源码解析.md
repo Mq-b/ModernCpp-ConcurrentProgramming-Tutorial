@@ -243,7 +243,6 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
                                  | - _Assoc_state       | -----> +-------------------------+
                                  | - _Get_only_once     |       | _Associated_state<_Ty>   |
                                  +----------------------+       +-------------------------+
-   
    ```
 
    上图是 `_Promise`、_`State_manager`、`_Associated_state` 之间的**包含关系示意图**，理解这个关系对我们后面**非常重要**。
