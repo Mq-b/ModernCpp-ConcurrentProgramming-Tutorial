@@ -41,8 +41,32 @@ export default defineUserConfig({
         pageInfo: ['ReadingTime'],
         plugins: {
             mdEnhance: {
+                gfm: true,
+                hint: true,
+                vPre: true,
+                alert: true,
+                tabs: true,
+                codetabs: true,
+                align: true,
+                attrs: true,
+                sup: true,
+                sub: true,
                 footnote: true,
-                imgLazyload: true
+                mark: true,
+                figure: true,
+                imgLazyload: true,
+                imgMark: true,
+                imgSize: true,
+                obsidianImgSize: true,
+                tasklist: true,
+                include: true,
+                katex: true,
+                component: true,
+                chart: true,
+                echarts: true,
+                flowchart: true,
+                mermaid: true,
+                plantuml: true,
             },
             searchPro: true
         }
