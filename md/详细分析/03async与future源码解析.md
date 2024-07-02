@@ -231,7 +231,7 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
    - **异常指针**：用于存储异步任务中可能发生的异常，以便在调用 `future::get` 时能够重新抛出异常。
    - **互斥量和条件变量**：用于在异步任务和等待任务之间进行同步。当异步任务完成时，条件变量会通知等待的任务。
 
-   `_Associated_state` 模板类负责管理异步任务的状态，包括结果的存储、异常的处理以及任务完成的通知。它是实现 `std::future` 和 `std::promise` 的核心组件之一，通过 `_State_manager` 和 `_Promise` 类模板对其进行封装和管理，提供更高级别的接口和功能。
+   **`_Associated_state` 模板类负责管理异步任务的状态，包括结果的存储、异常的处理以及任务完成的通知。它是实现 `std::future` 和 `std::promise` 的核心组件之一**，通过 `_State_manager` 和 `_Promise` 类模板对其进行封装和管理，提供更高级别的接口和功能。
 
    ```plaintext
    +---------------------+
@@ -269,4 +269,6 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
    }
    ```
 
-   在 MSVC STL 的实现中，`launch::async | launch::deferred` 与 `launch::async` 执行策略**毫无区别**。这段代码的 `switch` 语句有两个 `case` 和一个 `default`，如你所见，`case launch::async` 是为空的，除了 `launch::deferred` 最终都会进入 `default`，即都执行 `launch::async` 策略。
+   `_Get_associated_state` 函数返回一个 `_Associated_state` 指针，该指针指向一个新的 `_Deferred_async_state` 或 `_Task_async_state` 对象。这两个类分别对应于异步任务的两种不同执行策略：**延迟执行**和**异步执行**。
+
+   > 这也就是证明了在 MSVC STL 的实现中，`launch::async | launch::deferred` 与 `launch::async` 执行策略**毫无区别**。这段代码的 `switch` 语句有两个 `case` 和一个 `default`，如你所见，`case launch::async` 是为空的，除了 `launch::deferred` 最终都会进入 `default`，即都执行 `launch::async` 策略。
