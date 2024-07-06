@@ -253,7 +253,9 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
    `_Get_associated_state<_Ret>(_Policy, _Fake_no_copy_callable_adapter<_Fty, _ArgTypes...>(_STD forward<_Fty>(_Fnarg), _STD forward<_ArgTypes>(_Args)...))`
 
-   很明显，这是一个函数调用，将我们 `std::async` 的参数全部转发给它，它是重要而直观的，代码如下：
+   很明显，这是一个函数调用，将我们 `std::async` 的参数全部转发给它，它是重要而直观的。
+
+   `_Get_associated_state` 函数根据启动模式（`launch`）来决定创建的异步任务状态对象类型：
 
    ```cpp
    template <class _Ret, class _Fty>
@@ -271,4 +273,61 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
    `_Get_associated_state` 函数返回一个 `_Associated_state` 指针，该指针指向一个新的 `_Deferred_async_state` 或 `_Task_async_state` 对象。这两个类分别对应于异步任务的两种不同执行策略：**延迟执行**和**异步执行**。
 
-   > 这也就是证明了在 MSVC STL 的实现中，`launch::async | launch::deferred` 与 `launch::async` 执行策略**毫无区别**。这段代码的 `switch` 语句有两个 `case` 和一个 `default`，如你所见，`case launch::async` 是为空的，除了 `launch::deferred` 最终都会进入 `default`，即都执行 `launch::async` 策略。
+   > 这段代码也很好的说明在 MSVC STL 中，`launch::async | launch::deferred` 和 `launch::async` 的行为是相同的，即都是异步执行。
+
+   ---
+
+   **`_Task_async_state` 类型**
+
+   ```cpp
+   template <class _Rx>
+   class _Task_async_state : public _Packaged_state<_Rx()>
+   ```
+
+   `_Task_async_state` 是 `_Packaged_state` 的派生类，用于异步执行任务。它的构造函数接受一个函数对象，并将其传递给基类 `_Packaged_state` 的构造函数。
+
+   `_Packaged_state` 类型只有一个数据成员 `std::function` 类型的对象 `_Fn`，它表示需要执行的异步任务，而它又继承自 _Associated_state。
+
+   ```cpp
+   template <class _Ret, class... _ArgTypes>
+   class _Packaged_state<_Ret(_ArgTypes...)>
+       : public _Associated_state<_Ret>
+   ```
+
+   我们直接看 `_Task_async_state` 类型的构造函数实现即可：
+
+   ```cpp
+   template <class _Fty2>
+   _Task_async_state(_Fty2&& _Fnarg) : _Mybase(_STD forward<_Fty2>(_Fnarg)) {
+       _Task = ::Concurrency::create_task([this]() { // do it now
+           this->_Call_immediate();
+       });
+   
+       this->_Running = true;
+   }
+   ```
+
+   它的数据成员：
+
+   ```cpp
+   private:
+       ::Concurrency::task<void> _Task;
+   ```
+
+   这里其实使用到了微软自己实现的 [并行模式库](https://learn.microsoft.com/zh-cn/cpp/parallel/concrt/parallel-patterns-library-ppl?view=msvc-170)（PPL），简而言之 `async` 策略并不是单纯的创建线程让任务执行，而是使用了微软的 `::Concurrency::create_task` ，它从**线程池**中获取线程并执行任务返回包装对象。
+
+   `this->_Call_immediate();` 是调用的父类 `_Packaged_state` 的成员函数：
+
+   ```cpp
+   void _Call_immediate(_ArgTypes... _Args) { // call function object
+       _TRY_BEGIN
+       // call function object and catch exceptions
+       this->_Set_value(_Fn(_STD forward<_ArgTypes>(_Args)...), false);
+       _CATCH_ALL
+       // function object threw exception; record result
+       this->_Set_exception(_STD current_exception(), false);
+       _CATCH_END
+   }
+   ```
+
+   它则调用了 `_Associated_state` 的成员函数（`_Set_value`、`_set_exception`），传递的可调用对象执行结果，以及可能的异常，将结果或异常存储在 `_Associated_state` 中。
