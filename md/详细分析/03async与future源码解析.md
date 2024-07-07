@@ -255,7 +255,7 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
    很明显，这是一个函数调用，将我们 `std::async` 的参数全部转发给它，它是重要而直观的。
 
-   `_Get_associated_state` 函数根据启动模式（`launch`）来决定创建的异步任务状态对象类型：
+   [`_Get_associated_state`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L1400-L1410) 函数根据启动模式（`launch`）来决定创建的异步任务状态对象类型：
 
    ```cpp
    template <class _Ret, class _Fty>
@@ -277,14 +277,14 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
    ---
 
-   **`_Task_async_state` 类型**
+   **[`_Task_async_state`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L654-L686) 类型**
 
    ```cpp
    template <class _Rx>
    class _Task_async_state : public _Packaged_state<_Rx()>
    ```
 
-   `_Task_async_state` 是 `_Packaged_state` 的派生类，用于异步执行任务。它的构造函数接受一个函数对象，并将其传递给基类 `_Packaged_state` 的构造函数。
+   `_Task_async_state` 继承自 [`_Packaged_state`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L462-L597)，用于异步执行任务。它的构造函数接受一个函数对象，并将其传递给基类 `_Packaged_state` 的构造函数。
 
    `_Packaged_state` 类型只有一个数据成员 `std::function` 类型的对象 `_Fn`，它表示需要执行的异步任务，而它又继承自 _Associated_state。
 
@@ -292,6 +292,25 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
    template <class _Ret, class... _ArgTypes>
    class _Packaged_state<_Ret(_ArgTypes...)>
        : public _Associated_state<_Ret>
+   ```
+
+   ```mermaid
+   classDiagram
+       class _Associated_state {
+           ...
+       }
+   
+       class _Packaged_state {
+           -std::function _Fn
+       }
+   
+       class _Task_async_state {
+           -::Concurrency::task<void> _Task
+       }
+   
+       _Associated_state <|-- _Packaged_state : 继承
+       _Packaged_state <|-- _Task_async_state : 继承
+   
    ```
 
    我们直接看 `_Task_async_state` 类型的构造函数实现即可：
@@ -316,18 +335,53 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
    这里其实使用到了微软自己实现的 [并行模式库](https://learn.microsoft.com/zh-cn/cpp/parallel/concrt/parallel-patterns-library-ppl?view=msvc-170)（PPL），简而言之 `async` 策略并不是单纯的创建线程让任务执行，而是使用了微软的 `::Concurrency::create_task` ，它从**线程池**中获取线程并执行任务返回包装对象。
 
-   `this->_Call_immediate();` 是调用的父类 `_Packaged_state` 的成员函数：
+   `this->_Call_immediate();` 是调用 `_Task_async_state` 的父类 `_Packaged_state` 的成员函数 `_Call_immediate` 。
+
+   **`_Packaged_state` 有三个偏特化**，`_Call_immediate` 自然也拥有三个不同版本，用来应对我们传入的函数对象**返回类型**的三种情况：
+
+     - 返回普通类型 [`_Packaged_state<_Ret(_ArgTypes...)>`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L554)
+
+     ```cpp
+     void _Call_immediate(_ArgTypes... _Args) {
+         _TRY_BEGIN
+         // 调用函数对象并捕获异常 传递返回值
+         this->_Set_value(_Fn(_STD forward<_ArgTypes>(_Args)...), false);
+         _CATCH_ALL
+         // 函数对象抛出异常就记录
+         this->_Set_exception(_STD current_exception(), false);
+         _CATCH_END
+     }
+     ```
+
+     - 返回引用类型 [`_Packaged_state<_Ret&(_ArgTypes...)>`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L510)
+
+     ```cpp
+     void _Call_immediate(_ArgTypes... _Args) {
+         _TRY_BEGIN
+         // 调用函数对象并捕获异常 传递返回值的地址
+         this->_Set_value(_STD addressof(_Fn(_STD forward<_ArgTypes>(_Args)...)), false);
+         _CATCH_ALL
+         // 函数对象抛出异常就记录
+         this->_Set_exception(_STD current_exception(), false);
+         _CATCH_END
+     }
+     ```
+
+   - 返回 void 类型 [`_Packaged_state<void(_ArgTypes...)>`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L554)
 
    ```cpp
    void _Call_immediate(_ArgTypes... _Args) { // call function object
        _TRY_BEGIN
-       // call function object and catch exceptions
-       this->_Set_value(_Fn(_STD forward<_ArgTypes>(_Args)...), false);
+       // 调用函数对象并捕获异常 因为返回 void 不获取返回值 而是直接 _Set_value 传递一个 1
+       _Fn(_STD forward<_ArgTypes>(_Args)...);
+       this->_Set_value(1, false);
        _CATCH_ALL
-       // function object threw exception; record result
+       // 函数对象抛出异常就记录
        this->_Set_exception(_STD current_exception(), false);
        _CATCH_END
    }
    ```
 
-   它则调用了 `_Associated_state` 的成员函数（`_Set_value`、`_set_exception`），传递的可调用对象执行结果，以及可能的异常，将结果或异常存储在 `_Associated_state` 中。
+    说白了，无非是把返回引用类型的可调用对象返回的引用获取地址传递给 `_Set_value`，把返回 void 类型的可调用对象传递一个 1 表示正确执行的状态给 `_Set_value`。
+
+   `_Call_immediate` 则又调用了父类 `_Associated_state` 的成员函数（`_Set_value`、`_set_exception`），传递的可调用对象执行结果，以及可能的异常，将结果或异常存储在 `_Associated_state` 中。
