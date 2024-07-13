@@ -277,16 +277,18 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
    ---
 
-   **[`_Task_async_state`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L654-L686) 类型**
+   **[`_Task_async_state`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L654-L686) 与 `_Deferred_async_state` 类型**
 
    ```cpp
    template <class _Rx>
    class _Task_async_state : public _Packaged_state<_Rx()>
+   template <class _Rx>
+   class _Deferred_async_state : public _Packaged_state<_Rx()>
    ```
 
-   `_Task_async_state` 继承自 [`_Packaged_state`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L462-L597)，用于异步执行任务。它的构造函数接受一个函数对象，并将其传递给基类 `_Packaged_state` 的构造函数。
+   `_Task_async_state` 与 `_Deferred_async_state` 都继承自 [`_Packaged_state`](https://github.com/microsoft/STL/blob/f54203f/stl/inc/future#L462-L597)，用于异步执行任务。它们的构造函数都接受一个函数对象，并将其转发给基类 `_Packaged_state` 的构造函数。
 
-   `_Packaged_state` 类型只有一个数据成员 `std::function` 类型的对象 `_Fn`，它表示需要执行的异步任务，而它又继承自 _Associated_state。
+   **`_Packaged_state` 类型只有一个数据成员 `std::function` 类型的对象 `_Fn`，它用来存储需要执行的异步任务**，而它又继承自 `_Associated_state`。
 
    ```cpp
    template <class _Ret, class... _ArgTypes>
@@ -308,12 +310,17 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
            -::Concurrency::task<void> _Task
        }
    
+       class _Deferred_async_state {
+           ...
+       }
+   
        _Associated_state <|-- _Packaged_state : 继承
        _Packaged_state <|-- _Task_async_state : 继承
+       _Packaged_state <|-- _Deferred_async_state : 继承
    
    ```
 
-   我们直接看 `_Task_async_state` 类型的构造函数实现即可：
+   我们直接先看 `_Task_async_state` 与 `_Deferred_async_state` 类型的构造函数实现即可：
 
    ```cpp
    template <class _Fty2>
@@ -324,16 +331,21 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
    
        this->_Running = true;
    }
+   template <class _Fty2>
+   _Deferred_async_state(const _Fty2& _Fnarg) : _Packaged_state<_Rx()>(_Fnarg) {}
+   
+   template <class _Fty2>
+   _Deferred_async_state(_Fty2&& _Fnarg) : _Packaged_state<_Rx()>(_STD forward<_Fty2>(_Fnarg)) {}
    ```
 
-   它的数据成员：
+   `_Task_async_state` 它的数据成员：
 
    ```cpp
    private:
        ::Concurrency::task<void> _Task;
    ```
 
-   这里其实使用到了微软自己实现的 [并行模式库](https://learn.microsoft.com/zh-cn/cpp/parallel/concrt/parallel-patterns-library-ppl?view=msvc-170)（PPL），简而言之 `async` 策略并不是单纯的创建线程让任务执行，而是使用了微软的 `::Concurrency::create_task` ，它从**线程池**中获取线程并执行任务返回包装对象。
+   `_Task_async_state` 的实现使用到了微软自己实现的 [并行模式库](https://learn.microsoft.com/zh-cn/cpp/parallel/concrt/parallel-patterns-library-ppl?view=msvc-170)（PPL），简而言之 `launch::async` 策略并不是单纯的创建线程让任务执行，而是使用了微软的 `::Concurrency::create_task` ，它从**线程池**中获取线程并执行任务返回包装对象。
 
    `this->_Call_immediate();` 是调用 `_Task_async_state` 的父类 `_Packaged_state` 的成员函数 `_Call_immediate` 。
 
@@ -385,3 +397,15 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
     说白了，无非是把返回引用类型的可调用对象返回的引用获取地址传递给 `_Set_value`，把返回 void 类型的可调用对象传递一个 1 表示正确执行的状态给 `_Set_value`。
 
    `_Call_immediate` 则又调用了父类 `_Associated_state` 的成员函数（`_Set_value`、`_set_exception`），传递的可调用对象执行结果，以及可能的异常，将结果或异常存储在 `_Associated_state` 中。
+
+   `_Deferred_async_state` 并不会在线程中执行任务，但它同样调用 `_Call_immediate` 函数执行保有的函数对象，它有一个 `_Run_deferred_function` 函数：
+
+   ```cpp
+   void _Run_deferred_function(unique_lock<mutex>& _Lock) override { // run the deferred function
+       _Lock.unlock();
+       _Packaged_state<_Rx()>::_Call_immediate();
+       _Lock.lock();
+   }
+   ```
+
+   然后也就和上面说的没什么区别了 。
