@@ -298,25 +298,24 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
 
    ```mermaid
    classDiagram
-       class _Associated_state {
-           ...
-       }
+      class _Associated_state {
+          ...
+      }
    
-       class _Packaged_state {
-           -std::function _Fn
-       }
+      class _Packaged_state {
+          -std::function _Fn
+      }
    
-       class _Task_async_state {
-           -::Concurrency::task<void> _Task
-       }
+      class _Task_async_state {
+          -::Concurrency::task<void> _Task
+      }
    
-       class _Deferred_async_state {
-           ...
-       }
+      class _Deferred_async_state {
+      }
    
-       _Associated_state <|-- _Packaged_state : 继承
-       _Packaged_state <|-- _Task_async_state : 继承
-       _Packaged_state <|-- _Deferred_async_state : 继承
+      _Associated_state <|-- _Packaged_state : 继承
+      _Packaged_state <|-- _Task_async_state : 继承
+      _Packaged_state <|-- _Deferred_async_state : 继承
    
    ```
 
