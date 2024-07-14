@@ -241,7 +241,7 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
    | - _Future_retrieved |       |  _State_manager<_Ty> |
    +---------------------+       |----------------------|
                                  | - _Assoc_state       | -----> +-------------------------+
-                                 | - _Get_only_once     |       | _Associated_state<_Ty>   |
+                                 | - _Get_only_once     |       | _Associated_state<_Ty>*   |
                                  +----------------------+       +-------------------------+
    ```
 
@@ -408,3 +408,187 @@ _NODISCARD_ASYNC future<_Invoke_result_t<decay_t<_Fty>, decay_t<_ArgTypes>...>> 
    ```
 
    然后也就和上面说的没什么区别了 。
+
+7. 返回 `std::future`
+
+   `return future<_Ret>(_From_raw_state_tag{}, _Pr._Get_state_for_future());`
+
+   它选择到了 `std::future` 的构造函数是：
+
+   ```cpp
+   future(_From_raw_state_tag, const _Mybase& _State) noexcept : _Mybase(_State, true) {}
+   ```
+
+   > ```cpp
+   > using _Mybase = _State_manager<_Ty*>;
+   > ```
+
+   `_From_raw_state_tag` 是一个空类，并没有什么特殊作用，只是为了区分重载。
+
+   `_Get_state_for_future` 代码如下：
+
+   ```cpp
+   _State_manager<_Ty>& _Get_state_for_future() {
+       if (!_State.valid()) {
+           _Throw_future_error2(future_errc::no_state);
+       }
+   
+       if (_Future_retrieved) {
+           _Throw_future_error2(future_errc::future_already_retrieved);
+       }
+   
+       _Future_retrieved = true;
+       return _State;
+   }
+   ```
+
+   检查状态，修改状态，返回底层 `_State` ，完成转移状态。
+
+   总而言之这行代码通过调用 `std::future` 的特定构造函数，将 `_Promise` 对象中的 `_State_manager` 状态转移到 `std::future` 对象中，从而创建并返回一个 `std::future` 对象。这使得 `std::future` 可以访问并管理异步任务的状态，包括获取任务的结果或异常，并等待任务的完成。
+
+## `std::future`
+
+先前的 `std::async` 的内容非常之多，希望各位开发者不要搞晕了，其实重中之重主要是那几个类，关系图如下：
+
+```plaintext
++---------------------+
+|    _Promise<_Ty>    |
+|---------------------|
+| - _State            | -----> +---------------------+
+| - _Future_retrieved |       |  _State_manager<_Ty> |
++---------------------+       |----------------------|
+                              | - _Assoc_state       | -----> +-------------------------+
+                              | - _Get_only_once     |       | _Associated_state<_Ty>*   |
+                              +----------------------+       +-------------------------+
+```
+
+> `_Promise`、_`State_manager`、`_Associated_state` 之间的**包含关系示意图**。
+
+```mermaid
+classDiagram
+   class _Associated_state {
+       ...
+   }
+
+   class _Packaged_state {
+       -std::function _Fn
+   }
+
+   class _Task_async_state {
+       -::Concurrency::task<void> _Task
+   }
+
+   class _Deferred_async_state {
+   }
+
+   _Associated_state <|-- _Packaged_state : 继承
+   _Packaged_state <|-- _Task_async_state : 继承
+   _Packaged_state <|-- _Deferred_async_state : 继承
+
+```
+
+> `_Asscociated_state`、`_Packaged_state`、`_Task_async_state`、`_Deferred_async_state` **继承关系示意图**。
+
+这其中的 `_Associated_state`、`_State_manager` 类型是我们的核心，它在后续 `std::future` 乃至其它并发设施都有众多使用。
+
+---
+
+介绍 `std::future` 的源码我认为无需过多篇幅或者示例，引入过多的源码实现等等从头讲解，只会让各位开发者感觉复杂难。
+
+我们直接从它的最重要、常见的 `get()`、`wait()` 成员函数开始即可。
+
+```cpp
+std::future<int> future = std::async([] { return 0; });
+future.get();
+```
+
+我们先前已经详细介绍过了 `std::async` 返回 `std::future` 的步骤。以上这段代码，唯一的问题是：*`future.get()` 做了什么？*
+
+```cpp
+_EXPORT_STD template <class _Ty>
+class future : public _State_manager<_Ty> {
+    // class that defines a non-copyable asynchronous return object that holds a value
+private:
+    using _Mybase = _State_manager<_Ty>;
+
+public:
+    static_assert(!is_array_v<_Ty> && is_object_v<_Ty> && is_destructible_v<_Ty>,
+        "T in future<T> must meet the Cpp17Destructible requirements (N4950 [futures.unique.future]/4).");
+
+    future() = default;
+
+    future(future&& _Other) noexcept : _Mybase(_STD move(_Other), true) {}
+
+    future& operator=(future&&) = default;
+
+    future(_From_raw_state_tag, const _Mybase& _State) noexcept : _Mybase(_State, true) {}
+
+    _Ty get() {
+        // block until ready then return the stored result or throw the stored exception
+        future _Local{_STD move(*this)};
+        return _STD move(_Local._Get_value());
+    }
+
+    _NODISCARD shared_future<_Ty> share() noexcept {
+        return shared_future<_Ty>(_STD move(*this));
+    }
+
+    future(const future&)            = delete;
+    future& operator=(const future&) = delete;
+};
+```
+
+> `std::future` 其实还有两种特化，不过整体大差不差。
+>
+> ```cpp
+> template <class _Ty>
+> class future<_Ty&> : public _State_manager<_Ty*>
+> ```
+>
+> ```cpp
+> template <>
+> class future<void> : public _State_manager<int>
+> ```
+>
+> 也就是对返回类型为引用和 void 的情况了。其实先前已经聊过很多次了，无非就是内部的返回引用实际按指针操作，返回 void，那么也得给个 1。参见前面的 `_Call_immediate` 实现。
+
+可以看到 `std::future` 整体代码实现很少，很简单，那是因为其实现细节都在其父类 `_State_manager` 。然而 `_State_manager` 又保有一个 `_Associated_state<_Ty>*` 类型的成员。而 **`_Associated_state` 又是一切的核心**，之前已经详细描述过了。
+
+阅读 `std::future` 的源码你可能注意到了一个问题：*没有 `wait()`*成员函数？*
+
+它的定义来自于父类 `_State_manager` ：
+
+```cpp
+void wait() const { // wait for signal
+    if (!valid()) {
+        _Throw_future_error2(future_errc::no_state);
+    }
+
+    _Assoc_state->_Wait();
+}
+```
+
+然而这还不够，实际上还需要调用了 `_Associated_state` 的 `wait()` 成员函数：
+
+```cpp
+virtual void _Wait() { // wait for signal
+    unique_lock<mutex> _Lock(_Mtx);
+    _Maybe_run_deferred_function(_Lock);
+    while (!_Ready) {
+        _Cond.wait(_Lock);
+    }
+}
+```
+
+先使用锁进行保护，然后调用函数，再循环等待任务执行完毕。关键实际上在于 `_Maybe_run_deferred_function`：
+
+```cpp
+void _Maybe_run_deferred_function(unique_lock<mutex>& _Lock) { // run a deferred function if not already done
+    if (!_Running) { // run the function
+        _Running = true;
+        _Run_deferred_function(_Lock);
+    }
+}
+```
+
+`_Run_deferred_function` 相信你不会陌生，在讲述 `std::async` 源码中其实已经提到了。
