@@ -28,6 +28,7 @@ export default defineUserConfig({
                     { text: 'std::thread 的构造-源码解析', link: srcCodePath + '01thread的构造与源码解析', },
                     { text: 'std::scoped_lock 的源码实现与解析', link: srcCodePath + '02scoped_lock源码解析', },
                     { text: 'std::async 与 std::future 源码解析', link: srcCodePath + '03async与future源码解析', },
+                    { text: '线程池', link: srcCodePath + "04线程池", },
                 ]
             },
         ],
