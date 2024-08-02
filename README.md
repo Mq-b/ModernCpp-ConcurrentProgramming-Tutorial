@@ -10,7 +10,7 @@
 
 不管是否购买课程，任何组织和个人遵守 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.zh-hans) 协议均可随意使用学习。
 
-[捐赠](/image/捐赠)、[issues](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/issues)、[pr](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/pulls) 均会在致谢列表中**铭记您的贡献**。
+[捐赠](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/tree/main/image/%E6%8D%90%E8%B5%A0)、[issues](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/issues)、[pr](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/pulls) 均会在致谢列表中**铭记您的贡献**。
 
 </div>
 
