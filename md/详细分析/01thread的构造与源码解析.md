@@ -131,7 +131,7 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
 4. `constexpr auto _Invoker_proc = _Get_invoke<_Tuple>(make_index_sequence<1 + sizeof...(_Args)>{})`
 
-   - 调用 [`_Get_invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L65-L68) 函数，传入 `_Tuple` 类型和一个参数序列的索引序列（为了遍历形参包）。这个函数用于获取一个函数指针，指向了一个静态成员函数 [`_Invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L55-L63)，用来实际执行线程。这两个函数都非常的简单，我们来看看：
+   - 调用 [`_Get_invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L65-L68) 函数，传入 `_Tuple` 类型和一个参数序列的索引序列（为了遍历形参包）。这个函数用于获取一个函数指针，指向了一个静态成员函数 [`_Invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L55-L63)，它是线程实际执行的函数。这两个函数都非常的简单，我们来看看：
 
     ```cpp
      template <class _Tuple, size_t... _Indices>
