@@ -30,9 +30,9 @@ public:
     }
 
     void addAudioPath(const std::string& path) {
-        std::lock_guard<std::mutex> lock{ mtx };
-        audio_queue.push(path);
-        cond.notify_one();  // 通知线程新的音频
+        std::lock_guard<std::mutex> lock{ mtx }; // 互斥量确保了同一时间不会有其它地方在操作共享资源（队列）
+        audio_queue.push(path); // 为队列添加元素 表示有新的提示音需要播放
+        cond.notify_one();      // 通知线程新的音频
     }
 
 private:
@@ -45,8 +45,8 @@ private:
 
                 if (audio_queue.empty()) return; // 防止在对象为空时析构出错
 
-                path = audio_queue.front();
-                audio_queue.pop();
+                path = audio_queue.front(); // 从队列中取出元素
+                audio_queue.pop();          // 取出后就删除元素，表示此元素已被使用
             }
 
             if (!music.openFromFile(path)) {
@@ -58,18 +58,18 @@ private:
 
             // 等待音频播放完毕
             while (music.getStatus() == sf::SoundSource::Playing) {
-                sf::sleep(sf::seconds(0.1f));  // sleep 避免忙等占用CPU
+                sf::sleep(sf::seconds(0.1f));  // sleep 避免忙等占用 CPU
             }
         }
     }
 
-    std::atomic<bool> stop;
-    std::thread player_thread;
-    std::mutex mtx;
-    std::condition_variable cond;
-    std::queue<std::string> audio_queue;
-    sf::Music music;
-
+    std::atomic<bool> stop;              // 控制线程的停止与退出，
+    std::thread player_thread;           // 后台执行音频任务的专用线程
+    std::mutex mtx;                      // 保护共享资源
+    std::condition_variable cond;        // 控制线程等待和唤醒，当有新任务时通知音频线程
+    std::queue<std::string> audio_queue; // 音频任务队列，存储待播放的音频文件路径
+    sf::Music music;                     // SFML 音频播放器，用于加载和播放音频文件
+    
 public:
     static constexpr std::array soundResources{
         "./sound/01初始化失败.ogg",
