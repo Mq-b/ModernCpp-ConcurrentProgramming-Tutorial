@@ -12,7 +12,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "C
     add_compile_options("-finput-charset=UTF-8" "-fexec-charset=UTF-8")
 endif()
 
-add_executable(${PROJECT_NAME} "32限时等待-时钟.cpp")
+add_executable(${PROJECT_NAME} "34限时等待-时间点.cpp")
 
 
 # 设置 SFML 的 CMake 路径
