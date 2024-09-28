@@ -2,7 +2,7 @@
 #include <thread>
 #include <functional>
 
-void f(const std::string&);
+void f(const std::string&) { };
 
 void test() {
     char buffer[1024]{};

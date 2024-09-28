@@ -10,7 +10,7 @@ struct X {
 };
 
 int main(){
-    std::thread
+    std::thread;
     X x{ [] {} };
-    X x2{ x }; // 选择到了有参构造函数，不导致编译错误
+    // X x2{ x }; // 选择到了有参构造函数，不导致编译错误
 }

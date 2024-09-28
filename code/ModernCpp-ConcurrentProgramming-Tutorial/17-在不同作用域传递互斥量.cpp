@@ -5,7 +5,7 @@
 #include <memory>
 
 std::unique_lock<std::mutex> get_lock() {
-    extern std::mutex some_mutex;
+    static std::mutex some_mutex;
     std::unique_lock<std::mutex> lk{ some_mutex };
     return lk; // 选择到 unique_lock 的移动构造，转移所有权
 }

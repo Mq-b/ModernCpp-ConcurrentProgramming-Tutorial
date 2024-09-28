@@ -44,6 +44,9 @@ out/
 bin/
 *.ilk
 *.pdb
+code/ModernCpp-ConcurrentProgramming-Tutorial/.cache
+code/ModernCpp-ConcurrentProgramming-Tutorial/.xmake
+code/ModernCpp-ConcurrentProgramming-Tutorial/build
 
 CMakePresets.json
 CMakeUserPresets.json
