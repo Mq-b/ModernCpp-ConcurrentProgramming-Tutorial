@@ -10,7 +10,7 @@
 
 不管是否购买课程，任何组织和个人遵守 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.zh-hans) 协议均可随意使用学习。
 
-[捐赠](/image/捐赠)、[issues](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/issues)、[pr](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/pulls) 均会在致谢列表中**铭记您的贡献**。
+[捐赠](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/tree/main/image/%E6%8D%90%E8%B5%A0)、[issues](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/issues)、[pr](https://github.com/Mq-b/ModernCpp-ConcurrentProgramming-Tutorial/pulls) 均会在致谢列表中**铭记您的贡献**。
 
 </div>
 
@@ -25,3 +25,16 @@
 &emsp;&emsp;虽强调现代，但不用担心，我们几乎是从头教学，即使你从来没使用过 C++ 进行多线程编程，也不成问题。
 
 &emsp;&emsp;我们希望您的编译器版本和标准尽可能的高，我们的代码均会测试三大编译器 gcc、clang、msvc。需要更高的标准会进行强调。
+
+<div align="center">
+
+![猫猫虫](./image/猫猫虫旋转.jpg)
+
+如果你觉得本仓库对你有所帮助，可以通过支付宝赞助白老师，激励白老师有更多的精力和信心维护本仓库。
+
+</div>
+
+> [!TIP]
+> 每一位开发者赞助 `30`，白老师一天的食品安全就有了着落。
+
+<img src="./image/赞助.jpg" width=512px alt="cpp"/>

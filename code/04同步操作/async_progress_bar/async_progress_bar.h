@@ -67,5 +67,5 @@ private:
     QPushButton* button{};
     QPushButton* button2{};
     Ui::async_progress_barClass ui{};
-    std::future<void>future;
+    std::future<void> future;
 };

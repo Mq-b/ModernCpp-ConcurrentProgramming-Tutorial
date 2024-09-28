@@ -68,7 +68,37 @@ struct _Thrd_t { // thread identifier for Win32
 
 前三个构造函数都没啥要特别聊的，非常简单，只有第四个构造函数较为复杂，且是我们本章重点，需要详细讲解。（*注意 MSVC 使用标准库的内容很多时候不加 **std::**，脑补一下就行*）
 
-如你所见，这个构造函数本身并没有做什么，它只是一个可变参数成员函数模板，增加了一些 [SFINAE](https://zh.cppreference.com/w/cpp/language/sfinae) 进行约束我们传入的[可调用](https://zh.cppreference.com/w/cpp/named_req/Callable)对象的类型不能是 `std::thread`。函数体中调用了一个函数 [**`_Start`**](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L72-L87)，将我们构造函数的参数全部完美转发，去调用它，这个函数才是我们的重点，如下：
+如你所见，这个构造函数本身并没有做什么，它只是一个可变参数成员函数模板，增加了一些 [SFINAE](https://zh.cppreference.com/w/cpp/language/sfinae) 进行约束我们传入的[可调用](https://zh.cppreference.com/w/cpp/named_req/Callable)对象的类型不能是 `std::thread`。关于这个约束你可能有问题，因为 `std::thread` 他并没有 `operator()` 的重载，不是可调用类型，这个 `enable_if_t` 的意义是什么呢？其实很简单，如下：
+
+```cpp
+struct X{
+    X(X&& x)noexcept{}
+    template <class Fn, class... Args>
+    X(Fn&& f,Args&&...args){}
+    X(const X&) = delete;
+};
+
+X x{ [] {} };
+X x2{ x }; // 选择到了有参构造函数，不导致编译错误
+```
+
+以上这段代码可以正常的[通过编译](https://godbolt.org/z/6zhW6xjqP)。这是重载决议的事情，我们知道，`std::thread` 是不可复制的，这种代码自然不应该让它通过编译，选择到我们的有参构造，所以我们添加一个约束让其不能选择到我们的有参构造：
+
+```cpp
+template <class Fn, class... Args, std::enable_if_t<!std::is_same_v<std::remove_cvref_t<Fn>, X>, int> = 0>
+```
+
+这样，这段代码就会正常的出现[编译错误](https://godbolt.org/z/Mc1h1GcdT)，信息如下：
+
+```txt
+error C2280: “X::X(const X &)”: 尝试引用已删除的函数
+note: 参见“X::X”的声明
+note: “X::X(const X &)”: 已隐式删除函数
+```
+
+也就满足了我们的要求，重载决议选择到了弃置复制构造函数产生编译错误，这也就是源码中添加约束的目的。
+
+而构造函数体中调用了一个函数 [**`_Start`**](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L72-L87)，将我们构造函数的参数全部完美转发，去调用它，这个函数才是我们的重点，如下：
 
 ```cpp
 template <class _Fn, class... _Args>
@@ -101,7 +131,7 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 
 4. `constexpr auto _Invoker_proc = _Get_invoke<_Tuple>(make_index_sequence<1 + sizeof...(_Args)>{})`
 
-   - 调用 [`_Get_invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L65-L68) 函数，传入 `_Tuple` 类型和一个参数序列的索引序列（为了遍历形参包）。这个函数用于获取一个函数指针，指向了一个静态成员函数 [`_Invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L55-L63)，用来实际执行线程。这两个函数都非常的简单，我们来看看：
+   - 调用 [`_Get_invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L65-L68) 函数，传入 `_Tuple` 类型和一个参数序列的索引序列（为了遍历形参包）。这个函数用于获取一个函数指针，指向了一个静态成员函数 [`_Invoke`](https://github.com/microsoft/STL/blob/8e2d724cc1072b4052b14d8c5f81a830b8f1d8cb/stl/inc/thread#L55-L63)，它是线程实际执行的函数。这两个函数都非常的简单，我们来看看：
 
     ```cpp
      template <class _Tuple, size_t... _Indices>
@@ -172,3 +202,40 @@ void _Start(_Fn&& _Fx, _Args&&... _Ax) {
 我们这里的源码解析涉及到的 C++ 技术很多，我们也没办法每一个都单独讲，那会显得文章很冗长，而且也不是重点。
 
 相信你也感受到了，**不会模板，你阅读标准库源码，是无稽之谈**，市面上很多教程教学，教导一些实现容器，过度简化了，真要去出错了去看标准库的代码，那是不现实的。不需要模板的水平有多高，也不需要会什么元编程，但是基本的需求得能做到，得会，这里推荐一下：[**现代C++模板教程**](https://github.com/Mq-b/Modern-Cpp-templates-tutorial)。
+
+---
+
+学习完了也不要忘记了回答最初的问题：
+
+1. **如何做到的默认按值复制？**
+
+   `_Start` 的第一行代码展示了这一点。我们将传入的所有参数包装成一个元组类型，这些类型先经过 `decay_t` 处理，去除了引用与 cv 限定，自然就实现了默认复制。
+
+   ```cpp
+   using _Tuple                 = tuple<decay_t<_Fn>, decay_t<_Args>...>;
+   ```
+
+2. **为什么需要 `std::ref` ？**
+
+   实现中将类型先经过 `decay` 处理，如果要传递引用，则必须用类包装一下才行，使用 `std::ref` 函数就会返回一个包装对象。
+
+3. **如何支持只能移动的对象？**
+
+   参数通过完美转发，最终调用时使用 `std::move`，这在线程实际执行的函数 `_Invoke` 中体现出来：
+
+   ```cpp
+   _STD invoke(_STD move(_STD get<_Indices>(_Tup))...);
+   ```
+
+4. 如何做到接受任意[可调用](https://zh.cppreference.com/w/cpp/named_req/Callable)对象？
+
+   源码的实现很简单，主要是通过两层包装，最终将 `void*` 指针转换到原类型，然后使用 `std::invoke` 进行调用。
+
+5. **如何创建的线程？**
+
+   MSVC STL 调用 Win32 API `_beginthreadex` 创建线程；libstdc++ 调用 `__gthread_create` 函数创建线程，在 Windows 上实际上就是调用 `CreateThread`。
+   `_beginthreadex` 和 `CreateThread` 都是微软提供的用于创建线程的 C 风格接口，它们的主要区别在于前者依赖于 C 运行时库，而后者更适合纯 Windows API 的情况。使用 `_beginthreadex` 可以确保正确初始化和清理 C 运行时库资源，而 `CreateThread` 则适用于不依赖于 C 运行时库的环境。
+
+6. **传递参数一节中的：“*`std::thread` 内部会将保有的参数副本转换为右值表达式进行传递*”到底是如何做到的？**
+
+   这就是第三个问题，差不多，无非是最后调用 `std::invoke` 函数之前，先 `std::move` 了。

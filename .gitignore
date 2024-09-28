@@ -41,6 +41,9 @@ node_modules/
 .vs/
 x64/
 out/
+bin/
+*.ilk
+*.pdb
 
 CMakePresets.json
 CMakeUserPresets.json

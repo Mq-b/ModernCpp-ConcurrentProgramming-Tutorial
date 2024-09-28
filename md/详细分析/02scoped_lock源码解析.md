@@ -8,7 +8,7 @@
 
 ## `std::scoped_lock` 的数据成员
 
-`std::scoped_lock` 是一个类模板，它有两个特化，也就是有三个版本，其中的数据成员也是不同的。并且它们都不可移动不可拷贝，“*管理类*”应该如此。
+`std::scoped_lock` 是一个类模板，它有两个特化，也就是有三个版本，其中的数据成员也是不同的。并且它们都不可移动不可复制，“*管理类*”应该如此。
 
 1. 主模板，是一个可变参数类模板，声明了一个类型形参包 `_Mutexes`，**存储了一个 `std::tuple`**，具体类型根据类型形参包决定。
 
@@ -81,8 +81,8 @@
 ```cpp
 std::mutex m1,m2;
 
-std::scoped_lock<std::mutex>lc{ m1 };                   // 匹配到偏特化版本  保有一个 std::mutex&
-std::scoped_lock<std::mutex, std::mutex>lc2{ m1,m2 };   // 匹配到主模板     保有一个 std::tuple<std::mutex&,std::mutex&>
+std::scoped_lock<std::mutex> lc{ m1 };                   // 匹配到偏特化版本  保有一个 std::mutex&
+std::scoped_lock<std::mutex, std::mutex> lc2{ m1,m2 };   // 匹配到主模板     保有一个 std::tuple<std::mutex&,std::mutex&>
 std::scoped_lock<> lc3;                                 // 匹配到全特化版本  空
 ```
 
