@@ -12,7 +12,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "C
     add_compile_options("-finput-charset=UTF-8" "-fexec-charset=UTF-8" "-fopenmp")
 endif()
 
-add_executable(${PROJECT_NAME} "41实现一个线程池.cpp")
+add_executable(${PROJECT_NAME} "45原子特化shared_ptr.cpp")
 
 set(SFML_DIR "D:/lib/SFML-2.6.1-windows-vc17-64-bit/SFML-2.6.1/lib/cmake/SFML")
 find_package(SFML 2.6.1 COMPONENTS system window graphics audio network REQUIRED)
