@@ -6,7 +6,7 @@
 
 # 现代C++并发编程教程
 
-本仓库用来存放 B 站课程[《现代 C++ 并发编程教程》]()的教案、代码。
+本仓库用来存放 B 站课程[《现代 C++ 并发编程教程》](https://www.bilibili.com/cheese/play/ss34184)的教案、代码。
 
 不管是否购买课程，任何组织和个人遵守 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.zh-hans) 协议均可随意使用学习。
 
