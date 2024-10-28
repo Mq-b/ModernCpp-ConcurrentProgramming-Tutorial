@@ -12,7 +12,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "C
     add_compile_options("-finput-charset=UTF-8" "-fexec-charset=UTF-8" "-fopenmp")
 endif()
 
-add_executable(${PROJECT_NAME} "45原子特化shared_ptr.cpp")
+add_executable(${PROJECT_NAME} "test2.cpp")
 
 set(SFML_DIR "D:/lib/SFML-2.6.1-windows-vc17-64-bit/SFML-2.6.1/lib/cmake/SFML")
 find_package(SFML 2.6.1 COMPONENTS system window graphics audio network REQUIRED)
@@ -30,3 +30,19 @@ set(Boost_INCLUDE_DIR "D:/vcpkg-master/installed/x64-windows/include")
 include_directories(${Boost_INCLUDE_DIR})
 find_package(Boost REQUIRED COMPONENTS system)
 target_link_libraries(${PROJECT_NAME} PRIVATE Boost::system)
+
+target_include_directories(${PROJECT_NAME} PRIVATE "D:/project/cpp-terminal/include")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_link_libraries(${PROJECT_NAME} PRIVATE 
+        "D:/project/cpp-terminal/lib/cpp-terminal-private.lib"
+        "D:/project/cpp-terminal/lib/cpp-terminal.lib"
+    )
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE 
+        "D:/project/cpp-terminal/lib/private/debug/cpp-terminal-private.lib"
+        "D:/project/cpp-terminal/lib/debug/cpp-terminal.lib"
+    )
+endif()
+
+find_package(spdlog REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog_header_only)
