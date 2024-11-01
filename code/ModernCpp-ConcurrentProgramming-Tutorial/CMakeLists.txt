@@ -14,11 +14,11 @@ endif()
 
 add_executable(${PROJECT_NAME} "test2.cpp")
 
-set(SFML_DIR "D:/lib/SFML-2.6.1-windows-vc17-64-bit/SFML-2.6.1/lib/cmake/SFML")
+set(CMAKE_PREFIX_PATH "D:/lib" CACHE STRING "自定义查找包的安装路径" FORCE)
+
 find_package(SFML 2.6.1 COMPONENTS system window graphics audio network REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE sfml-system sfml-window sfml-graphics sfml-audio sfml-network)
 
-set(fmt_DIR "D:/lib/fmt_x64-windows/share/fmt")
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt-header-only)
 
